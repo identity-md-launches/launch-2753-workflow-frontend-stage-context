@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-10-31T00:13:53.826Z",
+  "build": "passed",
+  "typecheck": "passed",
+  "logicTests": {
+    "passed": 14,
+    "failed": 0
+  },
+  "browserTests": {
+    "passed": 20,
+    "failed": 0,
+    "engines": [
+      "Chromium",
+      "WebKit"
+    ]
+  },
+  "runtimeManifestSha256": "90c18e237e369044d3695a02ac2adb26b0b8f5480a3009f50dee13f0bb594dfa",
+  "manifestBinding": "exact handoff + unchanged network + implementation-derived ABI",
+  "abiHashes": [
+    {
+      "name": "RoadTripVotes",
+      "abiHash": "11eb81fe5960de8efe603e3e0d88a1bb24a813bdf757100988026196a9990184"
+    }
+  ],
+  "assets": 10,
+  "exportBytes": 2551791,
+  "limits": {
+    "submissionBytes": 8388608,
+    "maximumAssets": 128,
+    "maximumFileBytes": 8388608
+  },
+  "broadcastTransactions": 0
+}

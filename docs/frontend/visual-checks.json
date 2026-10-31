@@ -1,0 +1,43 @@
+{
+  "checkedAt": "2026-10-31T00:09:10.736Z",
+  "exportPath": "/preview/",
+  "views": [
+    {
+      "width": 320,
+      "scrollWidth": 320,
+      "voteBottom": 533.171875,
+      "heading": "28px",
+      "epoch": "31 Oct 202623:51:01",
+      "tiles": true,
+      "wheel": "Settled wheel distance47.41 km"
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "voteBottom": 533.171875,
+      "heading": "28px",
+      "epoch": "31 Oct 202623:51:01",
+      "tiles": true,
+      "wheel": "Settled wheel distance47.41 km"
+    },
+    {
+      "width": 800,
+      "scrollWidth": 800,
+      "voteBottom": 550.796875,
+      "heading": "28px",
+      "epoch": "31 Oct 202623:51:01",
+      "tiles": true,
+      "wheel": "Settled wheel distance47.41 km"
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "voteBottom": 588.390625,
+      "heading": "44px",
+      "epoch": "31 Oct 202623:51:00",
+      "tiles": true,
+      "wheel": "Settled wheel distance47.41 km"
+    }
+  ],
+  "scriptAndLocalResourceErrors": []
+}

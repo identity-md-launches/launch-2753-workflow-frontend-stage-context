@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-10-31T00:14:28.477422+00:00",
+  "addedFiles": 57,
+  "addedBytesBeforeThisReport": 3458548,
+  "budgetBytes": 8388608,
+  "outsideScope": [],
+  "generatedDependenciesInBundle": false,
+  "symlinksInBundle": false,
+  "scope": [
+    "web/**",
+    "dist/**",
+    "docs/**",
+    "web/.gitignore"
+  ]
+}

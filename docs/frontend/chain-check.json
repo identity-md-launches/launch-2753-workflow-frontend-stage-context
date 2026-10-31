@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-10-31T00:01:11.197Z",
+  "rpcSource": "https://ethereum-sepolia-rpc.publicnode.com",
+  "chainId": 11155111,
+  "block": "12030116",
+  "contract": "0xb44d0f71fcba544fd800e38088d470d279067a20",
+  "runtimeCodeBytes": 2714,
+  "deploymentReceiptStatus": "success",
+  "deploymentBlock": "12029967",
+  "epochSeconds": "86400",
+  "destinationCount": "64",
+  "currentEpoch": "20757",
+  "totalVotes": "0",
+  "pending": [
+    "false",
+    "0"
+  ],
+  "routeLength": "0",
+  "broadcastTransactions": 0
+}

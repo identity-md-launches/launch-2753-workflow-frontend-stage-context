@@ -1,0 +1,105 @@
+{
+  "url": "production export at /preview/",
+  "results": [
+    {
+      "name": "390px first screen, read-only selection, keyboard sheet and full atlas",
+      "passed": true,
+      "ms": 1003
+    },
+    {
+      "name": "EIP-6963 connect, missing-chain add/switch, wrong-chain write lock",
+      "passed": true,
+      "ms": 919
+    },
+    {
+      "name": "phone without an extension offers all four wallet browsers and Smart Wallet",
+      "passed": true,
+      "ms": 823
+    },
+    {
+      "name": "a rejected network switch keeps writes disabled until switching succeeds",
+      "passed": true,
+      "ms": 1062
+    },
+    {
+      "name": "phone inside an injected wallet can connect directly",
+      "passed": true,
+      "ms": 1669
+    },
+    {
+      "name": "missing browser wallet and connection rejection show recoverable feedback",
+      "passed": true,
+      "ms": 1866
+    },
+    {
+      "name": "simulated vote, review, wallet signature, receipt, duplicate lock and event date",
+      "passed": true,
+      "ms": 1542
+    },
+    {
+      "name": "permissionless oldest-day finalization control and receipt refresh",
+      "passed": true,
+      "ms": 1507
+    },
+    {
+      "name": "submitted vote remains locked through receipt confirmation",
+      "passed": true,
+      "ms": 3039
+    },
+    {
+      "name": "reverted receipt reports failure and permits retry",
+      "passed": true,
+      "ms": 1245
+    },
+    {
+      "name": "wallet signature rejection recovers without losing destination",
+      "passed": true,
+      "ms": 1190
+    },
+    {
+      "name": "ABI simulation error is explained before a signature",
+      "passed": true,
+      "ms": 1021
+    },
+    {
+      "name": "wheel outage preserves read-only voting and reports unknown distance",
+      "passed": true,
+      "ms": 1483
+    },
+    {
+      "name": "wheel outage with a route leaves arrivals unknown",
+      "passed": true,
+      "ms": 690
+    },
+    {
+      "name": "no deployed code disables signing and exposes retry",
+      "passed": true,
+      "ms": 1667
+    },
+    {
+      "name": "a modified ABI fails closed before showing wallet or transaction controls",
+      "passed": true,
+      "ms": 222
+    },
+    {
+      "name": "320, 390, 800 and 1440px reflow with large counts, full address and open sheet",
+      "passed": true,
+      "ms": 3643
+    },
+    {
+      "name": "automated accessibility and reduced-motion audit",
+      "passed": true,
+      "ms": 1536
+    },
+    {
+      "name": "settled arrivals create postcards, ship crossings and confirmed Navigator points",
+      "passed": true,
+      "ms": 1742
+    },
+    {
+      "name": "WebKit read-only and wallet review interaction",
+      "passed": true,
+      "ms": 1318
+    }
+  ]
+}

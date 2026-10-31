@@ -1,0 +1,32 @@
+{
+  "chainId": 11155111,
+  "repoUrl": "https://github.com/identity-md-launches/launch-2752-workflow-contract-stage-context",
+  "version": 1,
+  "launchId": "85032931-cff2-4a80-954d-9e179977cd15",
+  "manifest": {
+    "kind": "evm_contracts",
+    "notes": "Hamster Road Trip voting contract on Sepolia. RoadTripVotes(uint256 epochSeconds, uint256 destinationCount) is deployed with epochSeconds = 86400 (24-hour epochs aligned to UTC days: epoch = block.timestamp / 86400) and destinationCount = 64 (valid destination ids 0 to 63). Each wallet votes once per epoch via vote(destinationId); a running leader is tracked per epoch (most votes, ties to the lowest id). After an epoch ends anyone may call finalize(epoch), which records the leader as the winner once and appends (epoch, destinationId) to the route queue. finalize accepts only the oldest epoch with votes that is not finalized yet (see pendingEpoch()), so the route queue is always in epoch order whoever calls; it reverts with EpochNotEnded, AlreadyFinalized, NoVotes or NotNextInQueue. Epochs with no votes are never finalized and never block the queue. Views: currentEpoch, epochStart, epochEnd, votesFor, totalVotes, hasVoted, voteOf, leaderOf, isFinalized, winnerOf, pendingEpoch, votedEpochCount, routeLength, routeAt, route. Events: Voted, Finalized. Per the approved brief the contract has no owner, admin, upgrade path, token or payments, so no $owner argument exists; both constructor values are immutable and there are no post-launch settings. The constructor is nonpayable, reads no other contract and no block data, so it deploys on an empty chain. This launch deploys only this contract; the website reads its deployed address and docs/abi/RoadTripVotes.json.",
+    "contracts": [
+      {
+        "contract": "RoadTripVotes",
+        "constructorArgs": [
+          "86400",
+          "64"
+        ]
+      }
+    ]
+  },
+  "contracts": [
+    {
+      "name": "RoadTripVotes",
+      "txHash": "0xcdec35252b2b8bdeac0c49f13a5c5b0ca8056135a8b550f0d2bdfb799eb1796a",
+      "abiHash": "11eb81fe5960de8efe603e3e0d88a1bb24a813bdf757100988026196a9990184",
+      "address": "0xb44d0f71fcba544fd800e38088d470d279067a20",
+      "blockNumber": 12029967,
+      "creationCodeHash": "c5b38a25d6d405223b04fcffc79660a4597da7d660d6f8812ab4de55fa03b77b"
+    }
+  ],
+  "sourceCommit": "f27d5d7ed2074d011ecdabcaa8d0ee48ccc6e0d6",
+  "abiInstructions": "Build ABIs from this exact source commit; compare canonicalKeccak(abi) with abiHash. Verify deployed code on the stated chain before enabling transactions.",
+  "attestationHash": "71e8c8bf4e447c0f18f51bec4b9ba56a59385515bc4397b0f5cca78129250a5d"
+}
