@@ -4,7 +4,7 @@
 
 The community watches a real wheel move a shared itinerary and votes for the next stop. The implemented direction is the brief's dark retro LED map: near-black surfaces, dotted routes, original pixel art and restrained teal, purple and amber accents. The ballot is the first product surface on a phone; the map and ballot sit beside each other on desktop. There is no separate marketing landing page.
 
-The implementation is in `web/src/styles.css`, `App.tsx`, `Map.tsx`, `Wallet.tsx` and `art.tsx`. This root document describes the preserved design system for Squeek’s First Road Trip. The matching copy in `docs/DESIGN.md` is kept for existing documentation links.
+The implementation is in `web/src/styles.css`, `App.tsx`, `Map.tsx`, `Wallet.tsx` and `art.tsx`. This root document describes the preserved design system for Squeek’s First Road Trip. The matching copy in `docs/DESIGN.md` is kept for existing documentation links. It is unchanged for the `squeeks-first-road-trip` hosting revision: the tokens, type, components and responsive rules below still describe the current source and export.
 
 ## Colors
 

@@ -26,6 +26,8 @@ For a gateway-style subpath preview instead, run `node web/scripts/serve.mjs` fr
 
 The publisher can host the contents of root `dist/` as ordinary files, including under a gateway subpath. Vite uses `base: './'`; navigation uses page anchors. Nothing needs server rewrites, environment variables, API keys, a relay, a database or a backend. Watching still requires network access to the public data services.
 
+The hosted site name is `squeeks-first-road-trip`, and the publisher assigns it. The export contains no host name or absolute URL, so a name change needs no rebuild. See [hosting validation](../docs/frontend/HOSTING-VALIDATION.md).
+
 ## Deployment configuration and ABI provenance
 
 `web/deployment/handoff.json` and `web/deployment/network.json` preserve the supplied handoff and network table as **build inputs**. They are not an alternative runtime address map. The running app fetches `dist/imd-deployment.json`, then its referenced ABI JSON, and checks the ABI's canonical Keccak hash before creating clients.

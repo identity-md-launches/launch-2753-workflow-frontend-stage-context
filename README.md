@@ -33,6 +33,10 @@ The original `npm --prefix web run build` script regenerates `imd-deployment.jso
 
 See [frontend documentation](web/README.md), [design system](DESIGN.md), and the [validation report](docs/frontend/REBRAND-VALIDATION.md) for interaction checks and limitations.
 
+### Hosting
+
+The site is hosted under the site name **`squeeks-first-road-trip`** (previously `hamster-road-trip-choose-the-nex`). The publisher pins the committed `dist/` to IPFS and assigns the name. No file in the site refers to its host name, and every asset URL is relative, so the export needed no change for the new name. The checks for this revision are in [hosting validation](docs/frontend/HOSTING-VALIDATION.md). There, a rebuild from source matched the committed `dist/` byte for byte, and the typecheck, unit tests, Chromium interaction suite and design probe ran.
+
 ## Layout
 
 | Path | Purpose |
