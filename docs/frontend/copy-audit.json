@@ -1,0 +1,60 @@
+{
+  "scope": "Case-insensitive audit of source, test messages, complete export, README files and design/validation docs.",
+  "filesSearched": 45,
+  "remainingUserFacingOccurrences": 0,
+  "remainingTechnicalMatches": [
+    {
+      "path": "DESIGN.md",
+      "matches": 1,
+      "classification": "Code-symbol/class references in technical documentation only; no obsolete character prose."
+    },
+    {
+      "path": "dist/assets/index-Bv9FIMyV.js",
+      "matches": 3,
+      "classification": "Preserved internal SVG/CSS class names only."
+    },
+    {
+      "path": "dist/assets/index-ChNdO5SV.css",
+      "matches": 14,
+      "classification": "Preserved internal SVG/CSS class names only."
+    },
+    {
+      "path": "docs/DESIGN.md",
+      "matches": 1,
+      "classification": "Code-symbol/class references in technical documentation only; no obsolete character prose."
+    },
+    {
+      "path": "docs/frontend/REBRAND-VALIDATION.md",
+      "matches": 5,
+      "classification": "Code-symbol/class references in technical documentation only; no obsolete character prose."
+    },
+    {
+      "path": "web/src/App.tsx",
+      "matches": 4,
+      "classification": "Preserved component, function, variable and CSS identifiers only."
+    },
+    {
+      "path": "web/src/Map.tsx",
+      "matches": 8,
+      "classification": "Preserved component, function, variable and CSS identifiers only."
+    },
+    {
+      "path": "web/src/art.tsx",
+      "matches": 5,
+      "classification": "Preserved component, function, variable and CSS identifiers only."
+    },
+    {
+      "path": "web/src/styles.css",
+      "matches": 14,
+      "classification": "Preserved component, function, variable and CSS identifiers only."
+    }
+  ],
+  "immutableMetadataOutsidePresentationScope": [
+    "web/package.json",
+    "web/package-lock.json",
+    "web/deployment/handoff.json",
+    "src/RoadTripVotes.sol",
+    "launch.json"
+  ],
+  "renderedChecks": "docs/frontend/rebrand-checks.json"
+}

@@ -1,0 +1,90 @@
+{
+  "checkedAt": "2026-10-31T08:23:40.497Z",
+  "exportPath": "/preview/",
+  "sourceChecks": {
+    "runtimeSyntaxIdenticalExceptText": true,
+    "protectedFiles": [
+      {
+        "path": "dist/imd-deployment.json",
+        "byteIdentical": true
+      },
+      {
+        "path": "dist/abi/RoadTripVotes.json",
+        "byteIdentical": true
+      },
+      {
+        "path": "docs/abi/RoadTripVotes.json",
+        "byteIdentical": true
+      },
+      {
+        "path": "src/RoadTripVotes.sol",
+        "byteIdentical": true
+      },
+      {
+        "path": "web/deployment/handoff.json",
+        "byteIdentical": true
+      },
+      {
+        "path": "web/deployment/network.json",
+        "byteIdentical": true
+      },
+      {
+        "path": "web/package.json",
+        "byteIdentical": true
+      },
+      {
+        "path": "web/package-lock.json",
+        "byteIdentical": true
+      },
+      {
+        "path": "web/vite.config.ts",
+        "byteIdentical": true
+      },
+      {
+        "path": "web/src/styles.css",
+        "byteIdentical": true
+      }
+    ]
+  },
+  "views": [
+    {
+      "width": 320,
+      "scrollWidth": 320,
+      "voteBottom": 533.171875,
+      "brandText": "SQUEEK’S FIRST\nROAD TRIP",
+      "brandWidth": 130.953125,
+      "brandScrollWidth": 131
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "voteBottom": 533.171875,
+      "brandText": "SQUEEK’S FIRST\nROAD TRIP",
+      "brandWidth": 139.46875,
+      "brandScrollWidth": 139
+    },
+    {
+      "width": 800,
+      "scrollWidth": 800,
+      "voteBottom": 529.796875,
+      "brandText": "SQUEEK’S FIRST\nROAD TRIP",
+      "brandWidth": 161.703125,
+      "brandScrollWidth": 162
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "voteBottom": 588.390625,
+      "brandText": "SQUEEK’S FIRST\nROAD TRIP",
+      "brandWidth": 195.953125,
+      "brandScrollWidth": 196
+    }
+  ],
+  "loadingFallback": true,
+  "shareAndFaviconLabels": true,
+  "helpAndFullAtlas": true,
+  "noObsoleteRenderedCopy": true,
+  "noArticleBeforeSqueek": true,
+  "scriptErrors": [],
+  "localResourceErrors": []
+}

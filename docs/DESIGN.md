@@ -1,10 +1,10 @@
-# Hamster Road Trip design
+# Squeek’s First Road Trip design
 
 ## Overview
 
 The community watches a real wheel move a shared itinerary and votes for the next stop. The implemented direction is the brief's dark retro LED map: near-black surfaces, dotted routes, original pixel art and restrained teal, purple and amber accents. The ballot is the first product surface on a phone; the map and ballot sit beside each other on desktop. There is no separate marketing landing page.
 
-The implementation is in `web/src/styles.css`, `App.tsx`, `Map.tsx`, `Wallet.tsx` and `art.tsx`. This document lives in `docs/` to honor the explicit write scope; no root file was added.
+The implementation is in `web/src/styles.css`, `App.tsx`, `Map.tsx`, `Wallet.tsx` and `art.tsx`. This root document describes the preserved design system for Squeek’s First Road Trip. The matching copy in `docs/DESIGN.md` is kept for existing documentation links.
 
 ## Colors
 
@@ -24,7 +24,7 @@ Primitives and semantic aliases are defined at the start of `web/src/styles.css`
 | `--warning` / `--amber-300` | `#f2bd74` | Countdown and crossing art |
 | `--error` / `--red-300` | `#ffa4ae` | Persistent, recoverable errors |
 
-Map geography uses a separate literal style in `Map.tsx`: land background `#223933`, water `#0e1924`, vegetation and land-use layers, muted borders and roads. This is cartographic artwork, not a parallel set of UI tokens. Pixel art has its own cream/amber hamster palette in `art.tsx`.
+Map geography uses a separate literal style in `Map.tsx`: land background `#223933`, water `#0e1924`, vegetation and land-use layers, muted borders and roads. This is cartographic artwork, not a parallel set of UI tokens. Pixel art has its own cream/amber palette for Squeek in `art.tsx`.
 
 The theme is deliberately dark only. Status always includes text, not color alone. The filled primary control is the vote action or the review confirmation inside the modal. Other actions are outlined. Text contrast measurements and limitations are recorded in the validation report, including unmeasured canvas-backed pairs.
 
@@ -41,7 +41,7 @@ The theme is deliberately dark only. Status always includes text, not color alon
 | Vote count / compact headline | `--text-stat` | 28px |
 | Wide headline | `--text-display` | 44px |
 
-Requested weights are 400, 600 and 700. The headline and uppercase section headings use 700; body prose remains normal case and sans serif. Uppercase monospace headings are explicitly requested by the brief. The wide headline uses -0.05em tracking, compact headline -0.03em, section headings -0.02em. Body tracking is natural. Body line-height is 1.5, headings 1.1–1.25, wrapping place headings 1.4. Countdown and changing values use tabular digits.
+Requested weights are 400, 600 and 700. The headline and uppercase section headings use 700; body prose remains normal case and sans serif. Uppercase monospace headings are preserved from the existing site under this revision’s styling constraint. The wide headline uses -0.05em tracking, compact headline -0.03em, section headings -0.02em. Body tracking is natural. Body line-height is 1.5, headings 1.1–1.25, wrapping place headings 1.4. Countdown and changing values use tabular digits.
 
 There are at most six sizes per viewport (five on the measured phone view). Text uses balance/pretty wrapping where appropriate; ids, addresses and large counts wrap without clipping. Native selects remain at least 16px to avoid phone input zoom.
 
@@ -57,7 +57,7 @@ The map keeps explicit visual height (420px desktop, 330px below 800px, 300px be
 
 ## Elevation & Depth
 
-This is a flat interface. Structural borders, surface color and whitespace carry groups. Panels do not combine decorative borders and shadows. A small glow belongs only to the hamster map artwork. The native dialog uses an opaque surface over a dark translucent backdrop, with browser-managed focus and top-layer placement. The map tools and opaque legends sit above the canvas; nothing is sticky over page text.
+This is a flat interface. Structural borders, surface color and whitespace carry groups. Panels do not combine decorative borders and shadows. A small glow belongs only to Squeek’s map artwork. The native dialog uses an opaque surface over a dark translucent backdrop, with browser-managed focus and top-layer placement. The map tools and opaque legends sit above the canvas; nothing is sticky over page text.
 
 ## Shapes
 
@@ -72,7 +72,7 @@ Controls use 4px corners, the map 6px, the ballot 3px and the desktop dialog 8px
 | `Address` | `Wallet.tsx` | Checksummed value, explorer link and clipboard button; compact variant for Navigator rows |
 | Primary action / `TxStatus` | `App.tsx` | Simulation, review, signature, confirmation, success/error and unknown-receipt recovery; duplicates locked through receipt |
 | Ballot | `App.tsx` | Native destination select, live vote tally, daily countdown, eligibility and gas explanation |
-| `TripMap` | `Map.tsx` | OpenFreeMap vector geography, selected stop, dotted route, pixel hamster, ship crossings, center/world/zoom controls |
+| `TripMap` | `Map.tsx` | OpenFreeMap vector geography, selected stop, dotted route, pixel Squeek, ship crossings, center/world/zoom controls |
 | `Hamster`, `PixelIcon`, `Icon` | `art.tsx` | Original reusable SVG art and a consistent 1.5px outline utility icon set |
 | Destination card | `.destination-card` | Large button, pressed state and selected border; moves selection and keyboard focus back to ballot |
 | Postcard | `.postcard` | Reached place, original fact, pixel icon and stop order; no fictional arrival timestamp |
@@ -80,7 +80,7 @@ Controls use 4px corners, the map 6px, the ballot 3px and the desktop dialog 8px
 
 Controls have hover, focus, pressed and disabled states. Focus uses a visible 2px foreground outline with 3px offset. Buttons are at least 44px high, with the primary vote at 52px and wallet rows at 52px. Attribution links are compact map credits rather than large action controls.
 
-Motion opts in under `prefers-reduced-motion: no-preference`: 120ms button transitions, 0.96 press scale, 0.35s stepped run bounce, 1s rotating wheel spokes, 0.2s feet and a 4s idle breath. The page's pause button stops all hamster animation; reduced motion stops animations and transitions. Map recentering uses 400ms normally and zero duration for reduced motion. Marker movement is derived from settled snapshots, not a synthetic timer.
+Motion opts in under `prefers-reduced-motion: no-preference`: 120ms button transitions, 0.96 press scale, 0.35s stepped run bounce, 1s rotating wheel spokes, 0.2s feet and a 4s idle breath. The page’s pause button stops all of Squeek’s animation; reduced motion stops animations and transitions. Map recentering uses 400ms normally and zero duration for reduced motion. Marker movement is derived from settled snapshots, not a synthetic timer.
 
 ## Do's and Don'ts
 

@@ -1,15 +1,17 @@
 {
-  "checkedAt": "2026-10-31T00:14:28.477422+00:00",
-  "addedFiles": 57,
-  "addedBytesBeforeThisReport": 3458548,
+  "checkedAt": "2026-10-31T08:28:11.706202+00:00",
+  "revision": "Squeek’s First Road Trip",
+  "changedOrAddedFiles": 33,
+  "changedOrAddedBytesIncludingThisReport": 2982326,
   "budgetBytes": 8388608,
-  "outsideScope": [],
+  "withinBudget": true,
+  "forbiddenPathsChanged": [],
   "generatedDependenciesInBundle": false,
+  "archivesInBundle": false,
   "symlinksInBundle": false,
-  "scope": [
-    "web/**",
-    "dist/**",
-    "docs/**",
-    "web/.gitignore"
-  ]
+  "submodulesInRepository": false,
+  "deploymentManifestByteIdentical": true,
+  "currentExportHashesVerified": true,
+  "sourceAndRequiredRuntimeAssetsComplete": true,
+  "ignoreFilesChanged": []
 }

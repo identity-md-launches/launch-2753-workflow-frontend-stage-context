@@ -119,7 +119,7 @@ try {
               ).length,
         ),
         0,
-        "Pause stops every hamster animation",
+        "Pause stops every Squeek animation",
       );
       await page
         .getByRole("button", { name: "Resume animation", exact: true })

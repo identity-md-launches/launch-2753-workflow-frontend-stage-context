@@ -1,33 +1,40 @@
 {
-  "checkedAt": "2026-10-31T00:13:53.826Z",
-  "build": "passed",
-  "typecheck": "passed",
-  "logicTests": {
-    "passed": 14,
-    "failed": 0
-  },
-  "browserTests": {
-    "passed": 20,
-    "failed": 0,
-    "engines": [
-      "Chromium",
-      "WebKit"
+  "revision": "Squeek’s First Road Trip copy update",
+  "productionBuild": {
+    "command": "cd web && npm exec -- vite build --emptyOutDir false",
+    "exitCode": 0,
+    "viteVersion": "7.3.7",
+    "modulesTransformed": 5341,
+    "durationSeconds": 23.04,
+    "warnings": [
+      "Upstream PURE annotation comments removed by Rollup.",
+      "One generated JavaScript chunk exceeds the existing 1600 kB warning threshold."
     ]
   },
-  "runtimeManifestSha256": "90c18e237e369044d3695a02ac2adb26b0b8f5480a3009f50dee13f0bb594dfa",
-  "manifestBinding": "exact handoff + unchanged network + implementation-derived ABI",
-  "abiHashes": [
-    {
-      "name": "RoadTripVotes",
-      "abiHash": "11eb81fe5960de8efe603e3e0d88a1bb24a813bdf757100988026196a9990184"
-    }
-  ],
-  "assets": 10,
-  "exportBytes": 2551791,
-  "limits": {
-    "submissionBytes": 8388608,
-    "maximumAssets": 128,
-    "maximumFileBytes": 8388608
+  "typecheck": {
+    "command": "npm --prefix web run typecheck",
+    "exitCode": 0
   },
-  "broadcastTransactions": 0
+  "logicTests": {
+    "command": "npm --prefix web test",
+    "exitCode": 0,
+    "passed": 14
+  },
+  "deploymentManifest": {
+    "byteIdenticalToPreviousRevision": true,
+    "sha256": "90c18e237e369044d3695a02ac2adb26b0b8f5480a3009f50dee13f0bb594dfa",
+    "assetInventory": "Historical; deliberately unchanged under the task’s explicit config freeze."
+  },
+  "legacyVerify": {
+    "command": "npm --prefix web run verify",
+    "exitCode": 1,
+    "reason": "After validating handoff, network and ABI, the inherited verifier rejects the changed presentation asset paths against the preserved historical inventory."
+  },
+  "export": {
+    "fileCount": 11,
+    "totalBytes": 2552648,
+    "currentInventory": "docs/frontend/export-files.json",
+    "relativeAssetUrls": true
+  },
+  "dependenciesAndBuildConfigurationChanged": false
 }

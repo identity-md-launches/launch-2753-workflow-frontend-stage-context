@@ -1,14 +1,37 @@
-# Hamster Road Trip — `RoadTripVotes`
+# Squeek’s First Road Trip — `RoadTripVotes`
 
-The on-chain half of the Hamster Road Trip community game. Wallets vote once per 24-hour epoch for one
-of 64 destinations; when an epoch ends anyone can finalize it, the destination with the most votes wins
+Squeek’s First Road Trip is a community game powered by Squeek’s real wheel. Small wheel. Big world.
+
+Wallets vote once per 24-hour epoch for one of 64 destinations; when an epoch ends anyone can finalize it, the destination with the most votes wins
 (ties to the lowest id) and is appended to the route queue. Epochs with votes can only be finalized in
 the order they ended, so the queue is in epoch order whoever calls. The contract has **no owner, admin,
 upgrade path, token or payments**.
 
-This repository is the contracts stage of the launch: implementation, tests, deploy script and ABI.
-The launch manifest (`launch.json`) is written by a later assignment, and the website is a separate
-deliverable that reads the deployed address and `docs/abi/RoadTripVotes.json`.
+The existing Sepolia contract is live. This repository includes its source and ABI, the React/TypeScript website in `web/`, and the ready-to-host static export in `dist/`. The website reads the unchanged deployment configuration and ABI. This copy revision does not deploy anything.
+
+## Install, preview and rebuild the website
+
+Use Node 22.12+ and the committed frontend lockfile:
+
+```sh
+npm --prefix web ci
+npm --prefix web run typecheck
+npm --prefix web test
+```
+
+Rebuild this presentation revision while preserving the deployed configuration and ABI:
+
+```sh
+rm -rf dist/assets
+(cd web && npm exec -- vite build --emptyOutDir false)
+npm --prefix web run preview
+```
+
+Open the preview URL printed by Vite. For a gateway-style `/preview/` URL, use `node web/scripts/serve.mjs`. `dist/index.html` and all runtime assets are included; asset URLs are relative and navigation uses page anchors. Public RPC, Squeekchain, route and tile services still require network access.
+
+The original `npm --prefix web run build` script regenerates `imd-deployment.json`, so it is deliberately bypassed for this revision. Its frozen asset inventory describes the previous export; the legacy `verify` command consequently cannot certify the revised presentation files. Runtime contract, chain and ABI verification are unchanged. Current export hashes and actual check results are in [revision validation](docs/frontend/REBRAND-VALIDATION.md).
+
+See [frontend documentation](web/README.md), [design system](DESIGN.md), and the [validation report](docs/frontend/REBRAND-VALIDATION.md) for interaction checks and limitations.
 
 ## Layout
 

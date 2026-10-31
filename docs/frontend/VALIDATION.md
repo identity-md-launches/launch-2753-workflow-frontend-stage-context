@@ -1,5 +1,7 @@
 # Frontend validation
 
+> Historical implementation report from the preceding task. Current copy revision results and the preserved deployment-manifest limitation are in [REBRAND-VALIDATION.md](REBRAND-VALIDATION.md). The original measurements below were not rerun merely by updating the project name in this documentation.
+
 Validated on 31 October 2026. These are worker observations and reproducible self-checks, not independent certification. No real transaction was broadcast. The published GitHub URL, IPFS CID, named entrypoint and control-plane publication checks belong to the next stage.
 
 ## Result
@@ -17,7 +19,7 @@ Validated on 31 October 2026. These are worker observations and reproducible sel
 | Remaining copy findings | 0 observed |
 | Share metadata | Title, favicon, description, og:title and local original SVG og:image present |
 | Runtime configuration / ABI / asset hashes | Passed; 10 inventoried assets, 2,551,791 exported bytes including manifest |
-| Scope exception | Design documentation is `docs/DESIGN.md`; root `DESIGN.md` is prohibited by the overriding path rules |
+| Original scope exception | The preceding task placed design documentation under `docs/`; this revision also supplies root `DESIGN.md`. |
 
 ## Requirements traced to the implementation
 
@@ -28,7 +30,7 @@ Validated on 31 October 2026. These are worker observations and reproducible sel
 | “24-hour epochs” and “each wallet votes once” among ids 0–63 | Met. Live immutable checks, native 64-choice ballot, wallet ballot guard and simulation; successful mocked receipt locks repeat voting. |
 | “When an epoch ends” the winner joins the queue; ties lowest id | Met. The contract determines winners. `pendingEpoch()` supplies the oldest eligible day to the permissionless finalization control. Mocked call arguments and receipt refresh checked. |
 | “starting at Miami Beach” and “real wheel km x SCALE” | Met. Miami origin and one SCALE=100 setting; settled snapshot distance drives route replay. Lifetime-budget interpretation is explicit in the README and data disclosure. |
-| “If the queue is empty or the wheel is idle” the hamster rests | Met. Closed-eye / sleeping SVG, idle story, running wheel spokes and feet when active with a next leg. Pause/resume and reduced motion checked. |
+| “If the queue is empty or the wheel is idle” Squeek rests | Met. Closed-eye / sleeping SVG, idle story, running wheel spokes and feet when active with a next leg. Pause/resume and reduced motion checked. |
 | “Arriving at a stop shows a postcard” and “trip log” | Met. Settled-arrival test generates the place, original fact, pixel icon and ordered log. Unknown distance does not invent zero arrivals. |
 | “Navigator leaderboard” ranks matching winning votes | Met. Confirmed `Voted` logs are matched to a route read at the safe block. The browser arrival test verifies one real-fixture event becomes one point; no seeded users. |
 | “Confirm exact endpoints” and “solid marker uses settled work only” | Met. Documented Squeekchain endpoints, schema/identity/counter checks, complete-snapshot settlement gate. Unit tests cover provisional hold, mismatch, unavailability, backwards counters and stale telemetry. |
@@ -38,7 +40,7 @@ Validated on 31 October 2026. These are worker observations and reproducible sel
 | “wallet connect” | Met. EIP-6963 extensions, phone wallet-browser links and Coinbase SDK connector. Missing-wallet, rejection, phone in-app injection and unknown-chain add/switch flows checked. |
 | Countdown, “live vote counts” and “route queue” | Met. Block-consistent tallies and queue, UTC countdown, 15-second refresh and post-receipt invalidation. Read failures disable writes and expose retry. |
 | “Sepolia test ETH”, faucet and “No free-text player input” | Met. Review shows zero contract value, estimated gas and gas balance; configured faucet linked. Game controls are selects/buttons only. No token, swap or approval flow was invented. |
-| Dark retro LED, neon accents, original pixel art, SVG/CSS/canvas | Met. Original wheel/hamster/landmarks/ship, dot grid, dotted route, dark vector map and LED postcard panels. No external scene images or fonts. |
+| Dark retro LED, neon accents, original pixel art, SVG/CSS/canvas | Met. Original wheel/Squeek/landmarks/ship, dot grid, dotted route, dark vector map and LED postcard panels. No external scene images or fonts. |
 | “Mobile-first”, large buttons and readable first screen | Met. Ballot precedes map on phones. 320/390/800/1440px, large counters, full address and wallet sheet checked without sideways overflow. Main action at 390 is visible before scrolling. |
 | Metadata: title, favicon, description, og:title, og:image | Met. Probe checks all five. Image path is relative pending publisher hostname; social platform SVG-unfurl behavior is not certified. |
 | Source, lockfile, static export and validation evidence | Met. Vite/React/TypeScript under `web/`, export under `dist/`, reproducible checks and documentation under `docs/` and `web/`. Exact manifest, network and ABI binding checked. |
@@ -112,4 +114,4 @@ Pinned Better Interface and Impeccable guidance was applied during construction 
 
 Map setup was checked against [OpenFreeMap's guide](https://openfreemap.org/quick_start/). Routing parameters follow [OSRM's API](https://project-osrm.org/docs/v5.5.1/api/). Wheel endpoint and unit definitions come from [Squeekchain's API documentation](https://docs.squeekchain.com/developers/api/). Rabby's mobile URL was checked against its [release link configuration](https://github.com/RabbyHub/rabby-mobile/blob/develop/apps/mobile/src/constant/universalLink.ts) and [open-dapp handler](https://github.com/RabbyHub/rabby-mobile/blob/develop/apps/mobile/src/hooks/universalLink.ts).
 
-Only `web/**`, root `dist/**` and `docs/**` are submitted. `web/.gitignore` has the explicit supplied path budget; it excludes generated dependency/cache folders at every frontend nesting level. Tool-generated browser artifacts outside scope were moved to disposable `test/scratch/`. No contract source, root build configuration, root lockfile, library, submodule or CI file changed.
+The original implementation submitted `web/**`, root `dist/**` and `docs/**`. Its `web/.gitignore` had the explicit supplied path budget; it excludes generated dependency/cache folders at every frontend nesting level. Tool-generated browser artifacts outside scope were moved to disposable `test/scratch/`. No contract source, root build configuration, root lockfile, library, submodule or CI file changed.

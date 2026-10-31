@@ -1,18 +1,20 @@
-# Hamster Road Trip frontend
+# Squeek’s First Road Trip frontend
 
 A static React/TypeScript community game for the attested `RoadTripVotes` deployment. Visitors can watch without a wallet, choose among 64 permanent destination ids, vote once per UTC day, and finalize the oldest ended voting day. No contract changes or deployments are part of this frontend.
 
 ## Install, develop and export
 
-Use Node 22.12+ (tested with Node 24.21.0 and npm 11.19.0).
+Use Node 22.12+ (this revision tested with Node 22.22.2 and npm 10.9.7).
 
 ```sh
 npm --prefix web ci
-npm --prefix web run build
+npm --prefix web run typecheck
+rm -rf dist/assets
+(cd web && npm exec -- vite build --emptyOutDir false)
 npm --prefix web run dev
 ```
 
-The development server serves the **same** `dist/imd-deployment.json` and attested ABI files as the production export, through the middleware in `vite.config.ts`. Build once before starting development. React source changes then reload normally.
+The development server serves the **same** `dist/imd-deployment.json` and attested ABI files as the production export, through the middleware in `vite.config.ts`. Rebuild once with the commands above before starting development. React source changes then reload normally.
 
 Preview the production build:
 
@@ -28,7 +30,9 @@ The publisher can host the contents of root `dist/` as ordinary files, including
 
 `web/deployment/handoff.json` and `web/deployment/network.json` preserve the supplied handoff and network table as **build inputs**. They are not an alternative runtime address map. The running app fetches `dist/imd-deployment.json`, then its referenced ABI JSON, and checks the ABI's canonical Keccak hash before creating clients.
 
-`npm run build` typechecks, exports to root `dist/`, then:
+The inherited `npm run build` script typechecks, exports to root `dist/`, then performs the following original manifest-generation workflow. **Do not use that script for this copy revision:** it would regenerate the protected `imd-deployment.json`. The Vite command above rebuilds the site while retaining the original config and ABI unchanged.
+
+Original workflow:
 
 1. Reads `docs/abi/RoadTripVotes.json` from the deployed source commit with `git show` and verifies the working copy is byte-identical. Keep that commit in the clone's history.
 2. Computes Keccak-256 of compact JSON with recursively sorted object keys, preserving array order, and compares it to the handoff's ABI hash.
@@ -37,7 +41,7 @@ The publisher can host the contents of root `dist/` as ordinary files, including
 5. Hashes every other exported file with SHA-256, including HTML, ABI, SVGs, CSS and JavaScript. The manifest excludes itself.
 6. Independently checks the schema's allowed keys, handoff equality, paths, ABI binding, complete asset inventory and response-size headroom.
 
-Run `npm --prefix web run verify` after inspecting or copying the export. Changing any exported byte requires regenerating the manifest. All contract addresses, chain ids, ABIs and public RPC settings used by the app come from that manifest. Only presentation/service settings (SCALE, Miami origin, Squeekchain API and map/routing URLs) live in `src/config.ts`.
+The original `npm --prefix web run verify` requires the manifest inventory and every exported byte to match. This revision must preserve the manifest exactly, so that inventory remains historical and this command reports changed presentation assets. The current presentation inventory is documented separately in `docs/frontend/export-files.json`; it is not runtime configuration. All contract addresses, chain ids, ABIs and public RPC settings used by the app come from that manifest. Only presentation/service settings (SCALE, Miami origin, Squeekchain API and map/routing URLs) live in `src/config.ts`.
 
 Before enabling transactions the app checks RPC chain id, nonempty deployed code, `epochSeconds = 86400`, `destinationCount = 64`, current reads, connected account and wallet chain. It simulates each transaction before review and again before requesting a signature. No ETH value is sent to the contract. Fees use Sepolia test ETH; a configured faucet is linked. No USD price source was supplied, so the app states that USD context is unavailable.
 
@@ -68,7 +72,8 @@ Navigator points are reconstructed from `Voted` events matching finalized winner
 ```sh
 npm --prefix web run typecheck
 npm --prefix web test
-npm --prefix web run build
+rm -rf dist/assets
+(cd web && npm exec -- vite build --emptyOutDir false)
 npm --prefix web exec -- playwright install chromium webkit
 npm --prefix web run test:browser
 node web/tests/visual.mjs
@@ -77,8 +82,8 @@ node web/scripts/check-chain.mjs
 
 The browser scripts manage their own temporary preview server and close it. On Linux, install Playwright's required system libraries on a machine where that is allowed. Tests write scratch output under `test/scratch/`; the live visual check writes its deliverable evidence under `docs/frontend/`. `check-chain.mjs` and `visual.mjs` accept an optional RPC transport argument for worker-side verification; it is never bundled or saved as public configuration.
 
-See [validation evidence](../docs/frontend/VALIDATION.md), [design system](../docs/DESIGN.md), and the JSON reports and screenshots beside them. The design document is under `docs/` because the assignment's explicit path rules prohibit adding a repository-root `DESIGN.md`.
+See [revision validation](../docs/frontend/REBRAND-VALIDATION.md), [design system](../DESIGN.md), and the JSON reports and screenshots beside them. The prior implementation review remains in [VALIDATION.md](../docs/frontend/VALIDATION.md) as historical evidence; its earlier build and environment claims are not results of this revision.
 
 Real wallet signatures, funded transactions, physical phone app handoffs, passkey enrollment and publication are not certified by the tests. No real transactions were broadcast. GitHub publication, IPFS pinning and site naming belong to the publisher after source delivery.
 
-Only `web/.gitignore` is changed as an ignore file, within its explicitly authorized path budget. It excludes dependency, build-cache and browser-report folders at every nesting level under `web/`. No node_modules, npm cache, browser binaries, vendored registry, tarball archives or submodules are deliverables.
+No ignore file is changed in this revision. The existing `web/.gitignore` has an explicit frontend path budget. It excludes dependency, build-cache and browser-report folders at every nesting level under `web/`. No node_modules, npm cache, browser binaries, vendored registry, tarball archives or submodules are deliverables.

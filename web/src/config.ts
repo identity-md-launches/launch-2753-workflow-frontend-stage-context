@@ -45,7 +45,7 @@ export type Deployment = {
   };
 };
 export const GAME = {
-  name: "Hamster Road Trip",
+  name: "Squeek’s First Road Trip",
   scale: 100,
   origin: {
     id: -1,

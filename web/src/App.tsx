@@ -336,10 +336,10 @@ export function App({ runtime }: { runtime: Runtime }) {
         Skip to the trip
       </a>
       <header className="site-header">
-        <a className="brand" href="#main" aria-label="Hamster Road Trip home">
+        <a className="brand" href="#main" aria-label="Squeek’s First Road Trip home">
           <Hamster />
           <span>
-            Hamster
+            Squeek’s First
             <br />
             Road Trip
           </span>
@@ -361,7 +361,7 @@ export function App({ runtime }: { runtime: Runtime }) {
         <div className="intro">
           <div>
             <h1>Small wheel. Big world.</h1>
-            <p>A real hamster powers the trip. You choose the next stop.</p>
+            <p>Squeek powers the trip. You choose the next stop.</p>
           </div>
           <span className="network-label">
             <span className="live-dot" />
@@ -369,7 +369,7 @@ export function App({ runtime }: { runtime: Runtime }) {
           </span>
         </div>
         <div className="dashboard">
-          <section className="map-section" aria-label="The hamster’s journey">
+          <section className="map-section" aria-label="Squeek’s journey">
             <TripMap
               legs={journey.data ?? []}
               position={state.position}
@@ -683,7 +683,7 @@ export function App({ runtime }: { runtime: Runtime }) {
               <p className="empty">Finding roads and ocean crossings…</p>
             ) : state.completed === data.route.length ? (
               <p className="empty">
-                All queued stops reached. Choose where the hamster goes next.
+                All queued stops reached. Choose where Squeek goes next.
               </p>
             ) : (
               <ol className="queue-list">
@@ -893,7 +893,7 @@ export function App({ runtime }: { runtime: Runtime }) {
       </main>
       <footer>
         <a className="footer-brand" href="#main">
-          Hamster Road Trip
+          Squeek’s First Road Trip
         </a>
         <span>Powered by real wheel work. Steered by the community.</span>
         <button onClick={() => setHelp(true)}>
@@ -912,12 +912,12 @@ export function App({ runtime }: { runtime: Runtime }) {
             votes wins; ties go to the lowest destination id.
           </li>
           <li>
-            The wheel’s settled distance moves the hamster along the winning
+            The wheel’s settled distance moves Squeek along the winning
             stops, at ×{GAME.scale}. Roads come from OSRM; oceans use
             great-circle air crossings.
           </li>
           <li>
-            The hamster rests when there is no next stop or the wheel is idle.
+            Squeek rests when there is no next stop or the wheel is idle.
             Each reached stop adds a postcard.
           </li>
           <li>

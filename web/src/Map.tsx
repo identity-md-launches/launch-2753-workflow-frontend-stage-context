@@ -297,7 +297,7 @@ export function TripMap({
       />
       <div className="map-grid" aria-hidden="true" />
       <div className="map-tools">
-        <button onClick={center} aria-label="Find the hamster">
+        <button onClick={center} aria-label="Find Squeek">
           <Icon name="compass" />
         </button>
         <button onClick={world}>World</button>
