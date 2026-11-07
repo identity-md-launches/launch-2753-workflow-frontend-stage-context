@@ -1,41 +1,35 @@
-# Squeek’s First Road Trip — `RoadTripVotes`
+# Squeek’s First Road Trip
 
-Squeek’s First Road Trip is a community game powered by Squeek’s real wheel. Small wheel. Big world.
+A real hamster powers the journey. The community chooses from 64 destinations on Sepolia, and settled wheel distance moves Squeek along the route.
 
-Wallets vote once per 24-hour epoch for one of 64 destinations; when an epoch ends anyone can finalize it, the destination with the most votes wins
-(ties to the lowest id) and is appended to the route queue. Epochs with votes can only be finalized in
-the order they ended, so the queue is in epoch order whoever calls. The contract has **no owner, admin,
-upgrade path, token or payments**.
+This revision fixes wallet restoration and rebuilds the frontend as a pixel travel game. The live **RoadTripVotes contract, its address, ABI, configuration, ballot ids and existing votes are unchanged**. No transactions were broadcast. This repository includes source in `web/` and the ready-to-host static export in `dist/`.
 
-The existing Sepolia contract is live. This repository includes its source and ABI, the React/TypeScript website in `web/`, and the ready-to-host static export in `dist/`. The website reads the unchanged deployment configuration and ABI. This copy revision does not deploy anything.
+## Install, preview and rebuild
 
-## Install, preview and rebuild the website
-
-Use Node 22.12+ and the committed frontend lockfile:
+Use Node 22.12+ and the existing frontend lockfile:
 
 ```sh
 npm --prefix web ci
 npm --prefix web run typecheck
 npm --prefix web test
-```
-
-Rebuild this presentation revision while preserving the deployed configuration and ABI:
-
-```sh
-rm -rf dist/assets
-(cd web && npm exec -- vite build --emptyOutDir false)
+npm --prefix web run build
 npm --prefix web run preview
 ```
 
-Open the preview URL printed by Vite. For a gateway-style `/preview/` URL, use `node web/scripts/serve.mjs`. `dist/index.html` and all runtime assets are included; asset URLs are relative and navigation uses page anchors. Public RPC, Squeekchain, route and tile services still require network access.
+The build typechecks, creates `dist/`, checks the ABI against the pinned source commit and handoff hash, regenerates the asset inventory, and verifies every exported hash. It preserves the verified contract/network fields. `dist/index.html`, its relative assets, bundled Google Fonts and license files are delivered. Do not deploy contracts to build or preview this site.
 
-The original `npm --prefix web run build` script regenerates `imd-deployment.json`, so it is deliberately bypassed for this revision. Its frozen asset inventory describes the previous export; the legacy `verify` command consequently cannot certify the revised presentation files. Runtime contract, chain and ABI verification are unchanged. Current export hashes and actual check results are in [revision validation](docs/frontend/REBRAND-VALIDATION.md).
+For a static gateway-style preview, run `node web/scripts/serve.mjs` and open `http://localhost:4173/preview/`. Navigation uses page anchors, so no server rewrite is needed. Fonts and artwork are local; Sepolia RPCs, wheel data, OSRM routing and OpenFreeMap tiles need internet access. The network publisher handles hosting after delivery; this task does not publish a site.
 
-See [frontend documentation](web/README.md), [design system](DESIGN.md), and the [validation report](docs/frontend/REBRAND-VALIDATION.md) for interaction checks and limitations.
+## Revision notes and checks
 
-### Hosting
+- [Delivery notes and all 64 landmark choices](docs/frontend/REVISION-DELIVERY.md)
+- [Actual build, browser, live-read and six-domain design results](docs/frontend/REVISION-VALIDATION.md)
+- [Implemented design system](DESIGN.md)
+- [Frontend behavior and recovery](web/README.md)
 
-The site is hosted under the site name **`squeeks-first-road-trip`** (previously `hamster-road-trip-choose-the-nex`). The publisher pins the committed `dist/` to IPFS and assigns the name. No file in the site refers to its host name, and every asset URL is relative, so the export needed no change for the new name. The checks for this revision are in [hosting validation](docs/frontend/HOSTING-VALIDATION.md). There, a rebuild from source matched the committed `dist/` byte for byte, and the typecheck, unit tests, Chromium interaction suite and design probe ran.
+The full interaction suite is `npm --prefix web run test:browser`. It uses deterministic wallet/RPC fixtures and writes disposable evidence under `test/scratch/`. A Playwright browser runtime is required. This task uses the provided runtime via `IMD_PLAYWRIGHT` and `PLAYWRIGHT_BROWSERS_PATH`; neither variable is needed to build or run the website. Live signatures, phone app handoffs and passkey enrollment remain manual verification limits. Earlier reports under `docs/frontend/` describe prior revisions; the `REVISION-*` reports describe this one.
+
+The following contract documentation is retained for reference. This assignment does not change or deploy the Solidity project.
 
 ## Layout
 

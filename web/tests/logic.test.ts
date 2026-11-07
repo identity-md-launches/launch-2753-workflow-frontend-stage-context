@@ -114,25 +114,23 @@ describe("route replay", () => {
       getItem: (key: string) => cache.get(key) ?? null,
       setItem: (key: string, value: string) => cache.set(key, value),
     });
-    const fetch = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          code: "Ok",
-          routes: [
-            {
-              distance: 1000,
-              geometry: {
-                coordinates: [
-                  DESTINATIONS[10].coordinates,
-                  DESTINATIONS[11].coordinates,
-                ],
-              },
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: "Ok",
+        routes: [
+          {
+            distance: 1000,
+            geometry: {
+              coordinates: [
+                DESTINATIONS[10].coordinates,
+                DESTINATIONS[11].coordinates,
+              ],
             },
-          ],
-        }),
-      });
+          },
+        ],
+      }),
+    });
     vi.stubGlobal("fetch", fetch);
     const leg = await loadLeg(DESTINATIONS[10], DESTINATIONS[11]);
     expect(leg.source).toBe("OSRM");
@@ -144,12 +142,10 @@ describe("route replay", () => {
   it("uses an air arc only when the service confirms no road", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue({
-          ok: false,
-          json: async () => ({ code: "NoRoute" }),
-        }),
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ code: "NoRoute" }),
+      }),
     );
     const leg = await loadLeg(DESTINATIONS[59], DESTINATIONS[63]);
     expect(leg.source).toBe("great-circle");
@@ -251,5 +247,70 @@ describe("wallet network and errors", () => {
     ).toContain("already voted");
     expect(friendlyError({ code: 4001 })).toContain("declined");
     expect(friendlyError(new Error("insufficient funds"))).toContain("faucet");
+  });
+});
+
+describe("revision: shared atlas and event-derived labels", () => {
+  it("has 64 named, distinct landmark silhouettes without remapping the ballot", async () => {
+    const { LANDMARKS } = await import("../src/landmarks");
+    expect(LANDMARKS).toHaveLength(64);
+    expect(new Set(LANDMARKS.map((l) => l.path)).size).toBe(64);
+    expect(
+      LANDMARKS.every((l) => l.name.length > 3 && l.path.startsWith("M")),
+    ).toBe(true);
+    expect(DESTINATIONS.map((d) => d.id)).toEqual(
+      Array.from({ length: 64 }, (_, i) => i),
+    );
+  });
+  it("pluralizes zero, one and many without losing bigint precision", async () => {
+    const { count } = await import("../src/travel");
+    expect(count(0n)).toBe("0 votes");
+    expect(count(1n)).toBe("1 vote");
+    expect(count(2)).toBe("2 votes");
+    expect(count(10n ** 24n)).toBe("1,000,000,000,000,000,000,000,000 votes");
+  });
+  it("groups only consecutive UTC wins in the same place", async () => {
+    const { groupedStops } = await import("../src/travel");
+    const groups = groupedStops([
+      { epoch: 1n, destinationId: 0n },
+      { epoch: 2n, destinationId: 0n },
+      { epoch: 4n, destinationId: 0n },
+      { epoch: 5n, destinationId: 1n },
+    ]);
+    expect(groups.map((g) => g.days)).toEqual([2, 1, 1]);
+    expect(groups[0].through).toBe(2n);
+  });
+  it("awards one point per winning epoch and derives real consecutive-day streaks", async () => {
+    const { rankNavigators } = await import("../src/chain");
+    const voter = "0x1111111111111111111111111111111111111111" as const;
+    const route = [
+      { epoch: 1n, destinationId: 2n },
+      { epoch: 2n, destinationId: 3n },
+      { epoch: 4n, destinationId: 3n },
+    ];
+    const votes = [
+      { epoch: 1n, destinationId: 2n, voter },
+      { epoch: 1n, destinationId: 2n, voter },
+      { epoch: 2n, destinationId: 3n, voter },
+      { epoch: 4n, destinationId: 3n, voter },
+      { epoch: 7n, destinationId: 3n, voter },
+    ];
+    expect(rankNavigators(route, votes)).toEqual([
+      { address: voter, wins: 3, streak: 2 },
+    ]);
+  });
+  it("a consecutive stay consumes no distance and calls no routing service", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const leg = await loadLeg(DESTINATIONS[0], DESTINATIONS[0]);
+    expect(leg.km).toBe(0);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("generated Navigator identity is deterministic and address-specific", async () => {
+    const { navigatorIdentity } = await import("../src/travel");
+    expect(navigatorIdentity("0x1234")).toEqual(navigatorIdentity("0x1234"));
+    expect(navigatorIdentity("0x1234").seed).not.toBe(
+      navigatorIdentity("0x1235").seed,
+    );
   });
 });

@@ -9,6 +9,8 @@ const mime = {
   ".css": "text/css",
   ".json": "application/json",
   ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".ttf": "font/ttf",
 };
 export function previewServer() {
   return createServer(async (req, res) => {

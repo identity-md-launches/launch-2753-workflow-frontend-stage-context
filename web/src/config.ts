@@ -1,8 +1,12 @@
-import { createConfig, http, fallback as wagmiFallback } from "wagmi";
+import {
+  createConfig,
+  createStorage,
+  http,
+  fallback as wagmiFallback,
+} from "wagmi";
 import { injected, coinbaseWallet } from "wagmi/connectors";
 import {
   createPublicClient,
-  custom,
   defineChain,
   fallback,
   http as rpcHttp,
@@ -91,6 +95,30 @@ async function json(url: string | URL) {
     throw new Error(`Unable to load deployment file (${response.status}).`);
   return response.json();
 }
+// Browsing still works when private-mode storage is unavailable or a saved value is corrupt.
+export const safeStorage = {
+  getItem: (key: string) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      /* optional */
+    }
+  },
+  removeItem: (key: string) => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* optional */
+    }
+  },
+};
 export async function loadRuntime() {
   const manifestUrl = new URL(
     `${import.meta.env.BASE_URL}imd-deployment.json`,
@@ -133,6 +161,7 @@ export async function loadRuntime() {
   });
   const walletConfig = createConfig({
     chains: [chain],
+    storage: createStorage({ key: "wagmi.squeek-v3", storage: safeStorage }),
     multiInjectedProviderDiscovery: true,
     connectors: [
       injected(),
@@ -148,21 +177,6 @@ export async function loadRuntime() {
       ),
     },
   });
-  let readProvider: EIP1193Provider | undefined;
-  const walletRead = custom(
-    {
-      request: (async (args: Parameters<EIP1193Provider["request"]>[0]) => {
-        if (!readProvider) throw new Error("No connected wallet fallback.");
-        if (
-          Number(await readProvider.request({ method: "eth_chainId" })) !==
-          deployment.chainId
-        )
-          throw new Error("Wallet fallback is on another chain.");
-        return readProvider.request(args);
-      }) as EIP1193Provider["request"],
-    },
-    { retryCount: 0 },
-  );
   const client = createPublicClient({
     chain,
     transport: fallback(
@@ -174,7 +188,6 @@ export async function loadRuntime() {
             retryCount: 0,
           }),
         ),
-        walletRead,
       ],
       { rank: false, retryCount: 1 },
     ),
@@ -186,9 +199,6 @@ export async function loadRuntime() {
     chain,
     walletConfig,
     client,
-    setReadProvider: (provider?: EIP1193Provider) => {
-      readProvider = provider;
-    },
   };
 }
 export type Runtime = Awaited<ReturnType<typeof loadRuntime>>;

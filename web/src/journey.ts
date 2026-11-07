@@ -55,6 +55,7 @@ export async function loadLeg(
   to: Destination,
 ): Promise<Leg> {
   const key = `hrt-road-v1-${from.id}-${to.id}`;
+  if (from.id === to.id) return { key, from, to, points: [from.coordinates, to.coordinates], km: 0, mode: "road", source: "OSRM", reason: "Consecutive stay in the same destination." };
   if (routeCache.has(key)) return routeCache.get(key)!;
   try {
     const raw = localStorage.getItem(key);

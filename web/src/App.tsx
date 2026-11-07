@@ -7,6 +7,7 @@ import { GAME, type Runtime } from "./config";
 import { DESTINATIONS } from "./destinations";
 import {
   readSnapshot,
+  readBallot,
   readNavigators,
   epochDate,
   friendlyError,
@@ -17,6 +18,15 @@ import { loadJourney, replay } from "./journey";
 import { TripMap } from "./Map";
 import { Wallet, Modal, Address, shortAddress } from "./Wallet";
 import { Hamster, PixelIcon, Icon } from "./art";
+import { Postcard, PostcardPicture, LandmarkIcon } from "./Postcards";
+import { LANDMARKS } from "./landmarks";
+import {
+  count,
+  groupedStops,
+  navigatorIdentity,
+  distanceContext,
+} from "./travel";
+import { TripMemory, getObservedArrival } from "./TripMemory";
 type Kind = "vote" | "finalize";
 type Tx = {
   stage:
@@ -47,12 +57,16 @@ const pendingStages = [
 ];
 const emptyTx: Tx = { stage: "idle", message: "" };
 export function App({ runtime }: { runtime: Runtime }) {
-  const { address, chainId, isConnected } = useAccount();
+  const { address, chainId, status: accountStatus } = useAccount();
+  const isConnected = accountStatus === "connected";
+  const connectedAddress = isConnected ? address : undefined;
   const { writeContractAsync } = useWriteContract();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState(0),
     [region, setRegion] = useState("All places"),
-    [sort, setSort] = useState("id"),
+    [sort, setSort] = useState("votes"),
+    [search, setSearch] = useState(""),
+    [passportPlace, setPassportPlace] = useState<number | null>(null),
     [showAll, setShowAll] = useState(false),
     [paused, setPaused] = useState(false),
     [now, setNow] = useState(Date.now());
@@ -60,12 +74,19 @@ export function App({ runtime }: { runtime: Runtime }) {
     [voteTx, setVoteTx] = useState<Tx>(emptyTx),
     [finalizeTx, setFinalizeTx] = useState<Tx>(emptyTx);
   const [help, setHelp] = useState(false);
+  const [, refreshArrivals] = useState(0);
+  useEffect(() => {
+    const refresh = () => refreshArrivals((n) => n + 1);
+    window.addEventListener("hrt-arrival-recorded", refresh);
+    return () => window.removeEventListener("hrt-arrival-recorded", refresh);
+  }, []);
   const lastWheel = useRef<Wheel | undefined>(undefined);
   const snapshot = useQuery({
-    queryKey: ["snapshot", address],
-    queryFn: () => readSnapshot(runtime, address),
+    queryKey: ["snapshot"],
+    queryFn: () => readSnapshot(runtime),
     refetchInterval: 15000,
-    retry: 1,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
     staleTime: 10000,
   });
   const wheel = useQuery({
@@ -91,7 +112,6 @@ export function App({ runtime }: { runtime: Runtime }) {
     enabled: !!route,
     staleTime: Infinity,
     retry: 1,
-    placeholderData: (previous) => previous,
   });
   const navigators = useQuery({
     queryKey: ["navigators", routeKey],
@@ -108,7 +128,14 @@ export function App({ runtime }: { runtime: Runtime }) {
   useEffect(() => {
     document.documentElement.dataset.motion = paused ? "paused" : "playing";
   }, [paused]);
-  const data = snapshot.data;
+  const ballot = useQuery({
+    queryKey: ["ballot", snapshot.data?.epoch.toString(), connectedAddress],
+    queryFn: () => readBallot(runtime, snapshot.data!.epoch, connectedAddress!),
+    enabled: !!snapshot.data && !!connectedAddress,
+    refetchInterval: 15000,
+    retry: 1,
+  });
+  const data = snapshot.data ? { ...snapshot.data, ...ballot.data } : undefined;
   const stale =
     !!data && (snapshot.isError || Date.now() - data.readAt > 60000);
   const state = replay(journey.data ?? [], wheel.data?.distanceMm ?? null);
@@ -145,13 +172,13 @@ export function App({ runtime }: { runtime: Runtime }) {
     !data ||
     stale ||
     wrong ||
-    !address ||
+    !connectedAddress ||
     data.ballot === undefined ||
     data.ballot[0] ||
     anyBusy ||
     secondsLeft === 0;
   const canFinalize = !!data?.pending[0] && data.pending[1] < data.epoch;
-  const voteReason = !address
+  const voteReason = !connectedAddress
     ? "Connect your wallet above to vote."
     : wrong
       ? `Switch to ${runtime.chain.name} using the wallet control above.`
@@ -167,7 +194,15 @@ export function App({ runtime }: { runtime: Runtime }) {
   const setTx = (kind: Kind, tx: Tx) =>
     kind === "vote" ? setVoteTx(tx) : setFinalizeTx(tx);
   async function prepare(kind: Kind) {
-    if (!address || wrong || !data || stale || anyBusy) return;
+    if (!connectedAddress || wrong || !data || stale || anyBusy) return;
+    if (data.balance === 0n) {
+      setTx(kind, {
+        stage: "error",
+        message:
+          "Your wallet has no Sepolia test ETH. Use the faucet link before voting.",
+      });
+      return;
+    }
     const arg = kind === "vote" ? BigInt(selected) : data.pending[1];
     setTx(kind, {
       stage: "checking",
@@ -179,7 +214,7 @@ export function App({ runtime }: { runtime: Runtime }) {
         abi: runtime.abi,
         functionName: kind,
         args: [arg],
-        account: address,
+        account: connectedAddress,
       };
       await runtime.client.simulateContract(options);
       const [gas, price] = await Promise.all([
@@ -189,7 +224,7 @@ export function App({ runtime }: { runtime: Runtime }) {
       setReview({
         kind,
         arg,
-        account: address,
+        account: connectedAddress,
         fee: gas * price,
         epoch: data.epoch,
       });
@@ -240,6 +275,7 @@ export function App({ runtime }: { runtime: Runtime }) {
       });
       await queryClient.invalidateQueries({ queryKey: ["snapshot"] });
       await queryClient.invalidateQueries({ queryKey: ["navigators"] });
+      await queryClient.invalidateQueries({ queryKey: ["ballot"] });
     } catch {
       setTx(kind, {
         stage: "unknown",
@@ -256,11 +292,13 @@ export function App({ runtime }: { runtime: Runtime }) {
     setTx(r.kind, {
       stage: "signing",
       message:
-        "Confirm this action in your wallet. No ETH is sent to the contract.",
+        "Waiting for wallet. Confirm this action; no ETH is sent to the contract.",
     });
     try {
       const current = getAccount(runtime.walletConfig);
       if (
+        current.status !== "connected" ||
+        typeof current.connector?.getProvider !== "function" ||
         current.address?.toLowerCase() !== r.account.toLowerCase() ||
         current.chainId !== runtime.deployment.chainId
       )
@@ -322,31 +360,92 @@ export function App({ runtime }: { runtime: Runtime }) {
     );
   }
   const places = [...DESTINATIONS]
-    .filter((d) => region === "All places" || d.region === region)
+    .filter(
+      (d) =>
+        (region === "All places" || d.region === region) &&
+        `${d.name} ${d.country} ${LANDMARKS[d.id].name}`
+          .toLocaleLowerCase()
+          .includes(search.toLocaleLowerCase().trim()),
+    )
     .sort((a, b) =>
       sort === "votes" && data
-        ? Number((data.votes[b.id] ?? 0n) - (data.votes[a.id] ?? 0n)) ||
-          a.id - b.id
+        ? data.votes[b.id] > data.votes[a.id]
+          ? 1
+          : data.votes[b.id] < data.votes[a.id]
+            ? -1
+            : a.id - b.id
         : a.id - b.id,
     );
-  const visible = showAll ? places : places.slice(0, 8);
+  const visible = showAll || search ? places : places.slice(0, 8);
+  const arrivalKnown = hasDistance && !!journey.data;
+  const completed = arrivalKnown ? state.completed : 0;
+  const groups = groupedStops(data?.route ?? []);
+  const visited = new Set(
+    data?.route.slice(0, completed).map((s) => Number(s.destinationId)) ?? [],
+  );
+  const finalFor = (epoch: bigint) =>
+    navigators.data?.finals.find((f) => f.epoch === epoch);
+  const currentCity =
+    state.current?.from.name ??
+    journey.data?.at(-1)?.to.name ??
+    GAME.origin.name;
+  const headingTo = state.current?.to.name;
+  const tripTitle =
+    visited.size === 64
+      ? "A whole world, collected."
+      : wheel.isError && !hasDistance
+        ? "Squeek’s position is on hold"
+        : !hasDistance || !journey.data
+          ? "Checking on Squeek…"
+          : running
+            ? `Rolling toward ${headingTo}`
+            : state.current && state.fraction > 0
+              ? "Resting on the way"
+              : `Resting in ${currentCity}`;
+  const resetLocal = data
+    ? new Date(Number(data.end) * 1000).toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+      })
+    : undefined;
+  const voteCount = (id: number) =>
+    data
+      ? count(data.votes[id])
+      : snapshot.isError
+        ? "Votes unavailable"
+        : "Votes loading…";
+  const selectPlace = (id: number) => {
+    setSelected(id);
+    document
+      .getElementById("vote")
+      ?.scrollIntoView({ behavior: "instant", block: "start" });
+  };
   return (
     <>
       <a href="#main" className="skip">
         Skip to the trip
       </a>
       <header className="site-header">
-        <a className="brand" href="#main" aria-label="Squeek’s First Road Trip home">
-          <Hamster />
+        <a
+          className="brand"
+          href="#main"
+          aria-label="Squeek’s First Road Trip home"
+        >
+          <Hamster running />
           <span>
             Squeek’s First
             <br />
             Road Trip
+            <span className="brand-sub">A tiny hamster. Your adventure.</span>
           </span>
         </a>
         <nav aria-label="Main navigation">
           <a href="#destinations">Destinations</a>
           <a href="#trip-log">Trip log</a>
+          <a href="#passport">Passport</a>
+        </nav>
+        <div className="header-actions">
           <button
             className="help-button"
             onClick={() => setHelp(true)}
@@ -354,59 +453,78 @@ export function App({ runtime }: { runtime: Runtime }) {
           >
             ?
           </button>
-        </nav>
-        <Wallet runtime={runtime} />
+          <Wallet runtime={runtime} />
+        </div>
       </header>
       <main id="main">
         <div className="intro">
           <div>
-            <h1>Small wheel. Big world.</h1>
-            <p>Squeek powers the trip. You choose the next stop.</p>
+            <h1>
+              Small wheel.<span className="hero-next"> Big world.</span>
+            </h1>
+            <p>Watch Squeek travel. Vote for the next stop.</p>
           </div>
           <span className="network-label">
             <span className="live-dot" />
-            {runtime.chain.name} testnet
+            {runtime.chain.name} · Testnet
           </span>
         </div>
         <div className="dashboard">
-          <section className="map-section" aria-label="Squeek’s journey">
-            <TripMap
-              legs={journey.data ?? []}
-              position={state.position}
-              active={running}
-              paused={paused}
-              selected={selected}
-              onSelect={setSelected}
-            />
-            <div className="wheel-strip">
-              <Hamster running={running && !paused} />
-              <div>
-                <strong>
-                  {wheel.isError
-                    ? "Wheel feed paused"
-                    : !hasDistance
-                      ? "Waiting for settled distance"
-                      : state.current
-                        ? running
-                          ? "A little closer with every turn."
-                          : "A tiny nap. A big adventure ahead."
-                        : state.completed > 0
-                          ? `Resting in ${journey.data?.at(-1)?.to.name}.`
-                          : "Resting at the starting line."}
-                </strong>
-                <span className="muted small">
-                  {hasDistance && state.current
-                    ? `Next: ${state.current.to.name} · ${Math.round(state.fraction * 100)}% of this leg`
-                    : "The wheel is ready for the community’s next stop."}
-                </span>
+          <section className="trip-scene" aria-label="Squeek’s current state">
+            <div className="scene-sky" aria-hidden="true">
+              <svg className="scene-clouds" viewBox="0 0 600 200">
+                <path
+                  fill="#fff8e7"
+                  d="M30 60h22V38h40v10h24v26H30zM383 45h20V26h34v9h23v22h-77zM202 110h15V94h35v8h18v21h-68z"
+                />
+                <path fill="#e9dca9" d="M515 105h35v35h-35z" />
+              </svg>
+              <div className="scene-landmark">
+                <LandmarkIcon
+                  id={state.current?.to.id ?? selected}
+                  size={200}
+                />
               </div>
-              <button
-                className="icon-button"
-                aria-label={paused ? "Resume animation" : "Pause animation"}
-                onClick={() => setPaused(!paused)}
-              >
-                <Icon name={paused ? "play" : "pause"} />
-              </button>
+              <div className="scene-ground" />
+              <div className={`scene-squeek ${running ? "travelling" : ""}`}>
+                <Hamster running={running && !paused} />
+              </div>
+              <div className="scene-track" />
+            </div>
+            <div className="scene-status">
+              <div className="section-head">
+                <span className="status-label">
+                  <span
+                    className={`status-square ${running ? "active" : ""}`}
+                  />
+                  {wheel.isError
+                    ? "Wheel status unavailable"
+                    : !hasDistance
+                      ? "Wheel status loading"
+                      : running
+                        ? "Squeek is running"
+                        : "Squeek is resting"}
+                </span>
+                <button
+                  className="icon-button"
+                  onClick={() => setPaused(!paused)}
+                  aria-label={paused ? "Resume animation" : "Pause animation"}
+                >
+                  <Icon name={paused ? "play" : "pause"} />
+                </button>
+              </div>
+              <h2>{tripTitle}</h2>
+              <p className="small">
+                {visited.size === 64
+                  ? "All 64 stops reached. The passport is complete; voting remains open."
+                  : !arrivalKnown
+                    ? "Position waits for settled wheel distance and the community route."
+                    : headingTo
+                      ? `Next: ${headingTo} · ${Math.round(state.fraction * 100)}% of this leg`
+                      : completed > 0
+                        ? "Every queued stop reached. Choose where Squeek goes next."
+                        : "Starting in Miami Beach. Your votes set the route."}
+              </p>
             </div>
           </section>
           <section
@@ -415,12 +533,16 @@ export function App({ runtime }: { runtime: Runtime }) {
             aria-labelledby="vote-title"
           >
             <div className="section-head">
-              <h2 id="vote-title">Choose the next stop</h2>
+              <h2 id="vote-title">Where to next?</h2>
               <Icon name="compass" />
             </div>
             <div className="epoch-row">
               <span>
-                {data ? epochDate(data.epoch) : "Loading today’s vote…"}
+                {data
+                  ? epochDate(data.epoch)
+                  : snapshot.isError
+                    ? "Ballot unavailable"
+                    : "Loading today’s ballot…"}
               </span>
               <span
                 className="countdown"
@@ -429,9 +551,7 @@ export function App({ runtime }: { runtime: Runtime }) {
                 {countdown}
               </span>
             </div>
-            <label className="select-label" htmlFor="destination">
-              Where should we go?
-            </label>
+            <label htmlFor="destination">Choose a destination</label>
             <select
               id="destination"
               value={selected}
@@ -443,120 +563,206 @@ export function App({ runtime }: { runtime: Runtime }) {
                 </option>
               ))}
             </select>
-            <div className="chosen-place">
-              <PixelIcon type={destination.icon} size={56} />
-              <div>
-                <h3>{destination.name}</h3>
-                <span className="muted small">{destination.country}</span>
-              </div>
-              <span className="chosen-votes">
-                <strong>{data ? String(data.votes[selected]) : "—"}</strong>
-                <span className="small muted">votes</span>
-              </span>
-            </div>
             <button
               className="primary vote-action"
-              disabled={voteDisabled}
-              onClick={() => void prepare("vote")}
+              disabled={
+                isConnected
+                  ? voteDisabled || data?.balance === 0n
+                  : accountStatus === "reconnecting"
+              }
+              onClick={() => {
+                if (!isConnected || wrong)
+                  window.dispatchEvent(new Event("hrt-connect"));
+                else void prepare("vote");
+              }}
             >
-              {voteTx.stage === "checking"
-                ? "Checking vote…"
-                : voteTx.stage === "signing"
-                  ? "Confirm in wallet…"
-                  : voteTx.stage === "confirming"
-                    ? "Confirming vote…"
-                    : voteTx.stage === "unknown"
-                      ? "Checking confirmation needed"
-                      : data?.ballot?.[0]
-                        ? "Voted today"
-                        : `Vote for ${destination.name}`}
+              {!isConnected
+                ? accountStatus === "reconnecting"
+                  ? "Restoring wallet…"
+                  : "Connect to vote"
+                : voteTx.stage === "checking"
+                  ? "Checking vote…"
+                  : voteTx.stage === "signing"
+                    ? "Waiting for wallet…"
+                    : voteTx.stage === "confirming"
+                      ? "Vote pending…"
+                      : voteTx.stage === "unknown"
+                        ? "Check confirmation below"
+                        : data?.ballot?.[0]
+                          ? "Voted today"
+                          : `Vote for ${destination.name}`}
               <Icon name={data?.ballot?.[0] ? "check" : "arrow"} />
             </button>
-            <p className="vote-help small muted">{voteReason}</p>
-            <TxStatus kind="vote" tx={voteTx} />
-            {secondsLeft !== null && secondsLeft <= 120 && (
-              <p className="warning small">
-                A vote mined after 00:00 UTC counts for the next day.
-              </p>
+            <p className="vote-help small muted">
+              {!isConnected
+                ? "Watch freely. One wallet, one vote each day."
+                : voteReason}
+            </p>
+            {(snapshot.isError || snapshot.failureCount > 0 || stale) && (
+              <div className="feed-note read-error" role="alert">
+                <div>
+                  <strong>Can’t reach the network, retrying</strong>
+                  <p className="small">
+                    {data
+                      ? "Last verified votes remain visible. Voting pauses until Sepolia responds."
+                      : "Votes and the route are unknown. Squeek’s atlas still works."}
+                  </p>
+                </div>
+                <button
+                  onClick={() => void snapshot.refetch()}
+                  disabled={snapshot.isFetching}
+                >
+                  {snapshot.isFetching ? "Retrying…" : "Retry contract reads"}
+                </button>
+              </div>
             )}
-            <div className="vote-summary">
-              <span>
-                <strong>{data ? String(data.total) : "—"}</strong> votes today
-              </span>
-              <span>
-                {data?.total
-                  ? `${DESTINATIONS[Number(data.leader[0])].name} leads`
-                  : "The route is yours to choose"}
+            <div className="chosen-place">
+              <LandmarkIcon id={selected} size={56} />
+              <div>
+                <h3>{destination.name}</h3>
+                <span className="small muted">{LANDMARKS[selected].name}</span>
+              </div>
+              <span className="chosen-votes">
+                {data
+                  ? count(data.votes[selected])
+                  : snapshot.isError
+                    ? "Unavailable"
+                    : "Loading…"}
               </span>
             </div>
+            {wrong && (
+              <p className="warning small">
+                Use “Switch to Sepolia” in the header to vote.
+              </p>
+            )}
+            {data?.balance === 0n && connectedAddress && (
+              <p className="warning" role="status">
+                Your wallet has no Sepolia test ETH.{" "}
+                <a
+                  href={runtime.deployment.network.faucets[0]}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Get test ETH from the faucet ↗
+                </a>
+              </p>
+            )}
+            {ballot.isError && (
+              <p className="error small">
+                Can’t read this wallet’s ballot.{" "}
+                <button onClick={() => void ballot.refetch()}>
+                  Retry wallet reads
+                </button>
+              </p>
+            )}
+            <TxStatus kind="vote" tx={voteTx} />
+            <div className="vote-summary">
+              <strong>
+                {data
+                  ? count(data.total)
+                  : snapshot.isError
+                    ? "Votes unavailable"
+                    : "Votes loading…"}
+              </strong>
+              <span className="small">
+                {data
+                  ? data.total > 0n
+                    ? `${DESTINATIONS[Number(data.leader[0])].name} leads`
+                    : "No votes today. Be the first."
+                  : snapshot.isError
+                    ? "Retry network reads"
+                    : "Reading Sepolia…"}
+              </span>
+            </div>
+            <p className="small muted reset-time">
+              Voting closes in {data ? countdown : "…"}. Reset:{" "}
+              {resetLocal ?? "loading local time"} · 00:00 UTC.
+            </p>
             <p className="small gas-note">
-              Only Sepolia test ETH for gas.{" "}
+              Test ETH for gas only.{" "}
               <a
                 href={runtime.deployment.network.faucets[0]}
                 target="_blank"
                 rel="noreferrer"
               >
-                Get test ETH <Icon name="external" />
+                Get test ETH ↗
               </a>
             </p>
-            {snapshot.isError && (
-              <div className="read-error" role="alert">
-                <p>Couldn’t refresh contract reads. Voting is paused.</p>
-                <button onClick={() => void snapshot.refetch()}>
-                  Retry contract reads
-                </button>
-              </div>
+            {secondsLeft !== null && secondsLeft <= 120 && (
+              <p className="warning small">
+                A vote mined after 00:00 UTC counts for the next day.
+              </p>
             )}
           </section>
+          <section className="map-section" aria-label="Squeek’s journey">
+            <TripMap
+              legs={journey.data ?? []}
+              position={state.position}
+              active={running}
+              paused={paused}
+              selected={selected}
+              onSelect={setSelected}
+            />
+            <div className="map-caption">
+              <span>64 places to go. Select a pin to choose.</span>
+              <a href="#destinations">Explore the atlas ↓</a>
+            </div>
+          </section>
         </div>
+        <TripMemory
+          runtime={runtime}
+          route={data?.route}
+          completed={arrivalKnown ? completed : undefined}
+          block={data?.block}
+          history={navigators.data}
+        />
         <section className="stats-strip" aria-label="Wheel and trip statistics">
           <div>
-            <span className="muted small">Settled wheel distance</span>
+            <span className="small muted">Settled wheel distance</span>
             <strong>
-              {wheel.data?.distanceMm !== null &&
-              wheel.data?.distanceMm !== undefined
-                ? `${(Number(wheel.data.distanceMm) / 1e6).toLocaleString("en", { maximumFractionDigits: 2 })} km`
-                : "Awaiting settlement"}
+              {hasDistance
+                ? `${(Number(wheel.data!.distanceMm) / 1e6).toLocaleString("en", { maximumFractionDigits: 2 })} km`
+                : wheel.isError
+                  ? "Unavailable"
+                  : "Awaiting settlement"}
             </strong>
           </div>
           <div>
-            <span className="muted small">Distance multiplier</span>
+            <span className="small muted">Distance multiplier</span>
             <strong>
               ×{GAME.scale}
-              <span className="muted small"> wheel km</span>
+              <span className="small muted"> wheel km</span>
             </strong>
           </div>
           <div>
-            <span className="muted small">Across the map</span>
+            <span className="small muted">Across the map</span>
             <strong>
-              {wheel.data?.distanceMm !== null &&
-              wheel.data?.distanceMm !== undefined
-                ? `${state.travelled.toLocaleString("en", { maximumFractionDigits: 1 })} km`
-                : "—"}
+              {arrivalKnown
+                ? `${Math.round(state.travelled).toLocaleString("en")} km`
+                : "Distance unknown"}
             </strong>
           </div>
           <div>
-            <span className="muted small">Postcards collected</span>
+            <span className="small muted">Passport collected</span>
             <strong>
-              {data && journey.data && hasDistance
-                ? String(state.completed)
-                : "—"}
-              <span className="muted small">
-                {" "}
-                / {data ? data.route.length : "—"} stops
-              </span>
+              {arrivalKnown ? `${visited.size} / 64` : "Arrivals unknown"}
             </strong>
           </div>
         </section>
+        {arrivalKnown && state.travelled > 0 && (
+          <p className="distance-context small">
+            {distanceContext(state.travelled)}
+          </p>
+        )}
         {(wheel.isError || wheel.data?.waiting) && (
           <div className="feed-note">
-            <span>
+            <p>
               {wheel.isError
                 ? "Wheel feed unavailable. The last confirmed position is held."
-                : wheel.data?.distanceMm === null
-                  ? "The latest distance includes unsettled work. The marker waits for confirmation."
-                  : "New wheel work is settling. Holding the last confirmed distance."}
-            </span>
+                : hasDistance
+                  ? "New wheel work is settling. Holding the last confirmed distance."
+                  : "The latest distance includes unsettled work. The marker waits for confirmation."}
+            </p>
             <button
               onClick={() => void wheel.refetch()}
               disabled={wheel.isFetching}
@@ -567,7 +773,7 @@ export function App({ runtime }: { runtime: Runtime }) {
         )}
         {journey.isError && (
           <div role="alert" className="feed-note">
-            <span>The route could not load. The marker waits here.</span>
+            <span>The route could not load. Arrival progress is unknown.</span>
             <button onClick={() => void journey.refetch()}>Retry route</button>
           </div>
         )}
@@ -578,7 +784,7 @@ export function App({ runtime }: { runtime: Runtime }) {
         >
           <div className="section-head">
             <div>
-              <h2 id="destinations-title">A world of possibilities</h2>
+              <h2 id="destinations-title">Pick a little adventure</h2>
               <p className="muted">64 stops. One destination wins each day.</p>
             </div>
             <a href="#vote">
@@ -586,8 +792,17 @@ export function App({ runtime }: { runtime: Runtime }) {
             </a>
           </div>
           <div className="filters">
+            <label className="search-label">
+              Search all 64 stops
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="City, country or landmark"
+              />
+            </label>
             <label>
-              Explore{" "}
+              Region
               <select
                 value={region}
                 onChange={(e) => {
@@ -608,10 +823,10 @@ export function App({ runtime }: { runtime: Runtime }) {
               </select>
             </label>
             <label>
-              Order{" "}
+              Order
               <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                <option value="id">Route atlas</option>
                 <option value="votes">Most votes</option>
+                <option value="id">Route atlas</option>
               </select>
             </label>
           </div>
@@ -620,30 +835,47 @@ export function App({ runtime }: { runtime: Runtime }) {
               <button
                 className={`destination-card ${selected === d.id ? "selected" : ""}`}
                 key={d.id}
-                onClick={() => {
-                  setSelected(d.id);
-                  document
-                    .getElementById("vote")
-                    ?.scrollIntoView({ behavior: "instant", block: "center" });
-                  document
-                    .getElementById("destination")
-                    ?.focus({ preventScroll: true });
-                }}
+                onClick={() => selectPlace(d.id)}
                 aria-pressed={selected === d.id}
               >
-                <PixelIcon type={d.icon} />
-                <div>
-                  <span className="place-name">{d.name}</span>
-                  <span className="muted small">{d.country}</span>
-                </div>
-                <span className="destination-count">
-                  {data ? String(data.votes[d.id]) : "—"}
-                  <span className="small muted"> votes</span>
+                <LandmarkIcon id={d.id} size={58} />
+                <span className="place-copy">
+                  <strong>{d.name}</strong>
+                  <span className="small muted">{d.country}</span>
+                  <span className="small">{voteCount(d.id)}</span>
+                </span>
+                <span className="selection-mark" aria-hidden="true">
+                  {selected === d.id ? "✓" : "+"}
+                </span>
+                <span className="share-track" aria-hidden="true">
+                  <span
+                    style={{
+                      width:
+                        data && data.total > 0n
+                          ? `${Number((data.votes[d.id] * 10000n) / data.total) / 100}%`
+                          : "0%",
+                    }}
+                  />
                 </span>
               </button>
             ))}
           </div>
-          {places.length > 8 && (
+          {places.length === 0 && (
+            <div className="empty">
+              <p>
+                No stops match “{search}” in {region.toLowerCase()}.
+              </p>
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setRegion("All places");
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+          {places.length > 8 && !search && (
             <button
               className="show-places"
               onClick={() => setShowAll(!showAll)}
@@ -658,83 +890,105 @@ export function App({ runtime }: { runtime: Runtime }) {
         <div className="trip-columns">
           <section id="route-queue" aria-labelledby="queue-title">
             <div className="section-head">
-              <h2 id="queue-title">
-                {hasDistance ? "Up next" : "Community route"}
-              </h2>
-              <span className="muted small">Epoch order</span>
+              <h2 id="queue-title">Up next</h2>
+              <Icon name="compass" />
             </div>
-            {!!data?.route.length && !hasDistance && (
-              <p className="small muted">
-                Arrival progress is unknown until settled distance is available.
-              </p>
-            )}
+            <p className="small muted">
+              The community’s route, in voting order.
+            </p>
             {!data ? (
-              <p className="empty">Waiting for the route from Sepolia.</p>
+              <p className="empty">
+                {snapshot.isError
+                  ? "Route unavailable. Retry network reads above."
+                  : "Waiting for the route from Sepolia…"}
+              </p>
             ) : data.route.length === 0 ? (
               <div className="empty">
                 <Hamster />
                 <p>
-                  No stops queued yet.
-                  <br />
-                  Today’s winning place will start the adventure.
+                  No stops queued yet. Today’s winning place will start the
+                  adventure.
                 </p>
+                <a href="#vote">Choose the first stop ↑</a>
               </div>
             ) : !journey.data ? (
-              <p className="empty">Finding roads and ocean crossings…</p>
-            ) : state.completed === data.route.length ? (
-              <p className="empty">
-                All queued stops reached. Choose where Squeek goes next.
-              </p>
+              <p className="empty">Finding roads and air crossings…</p>
+            ) : arrivalKnown && completed === data.route.length ? (
+              <div className="empty">
+                <p>All queued stops reached. Choose where Squeek goes next.</p>
+                <a href="#vote">Back to the ballot ↑</a>
+              </div>
             ) : (
               <ol className="queue-list">
-                {data.route.slice(state.completed).map((stop, i) => {
-                  const place = DESTINATIONS[Number(stop.destinationId)],
-                    leg = journey.data?.[state.completed + i];
-                  return (
-                    <li key={String(stop.epoch)}>
-                      <span className="stop-number">
-                        {String(state.completed + i + 1).padStart(2, "0")}
-                      </span>
-                      <div>
-                        <strong>{place.name}</strong>
-                        <span className="small muted">
-                          {epochDate(stop.epoch)} ·{" "}
-                          {leg?.mode === "flight" ? "Air crossing" : "By road"}
+                {groups
+                  .filter((g) => !arrivalKnown || g.start + g.days > completed)
+                  .map((g) => {
+                    const place = DESTINATIONS[Number(g.stop.destinationId)],
+                      leg = journey.data?.[g.start];
+                    return (
+                      <li key={String(g.stop.epoch)}>
+                        <span className="stop-number">
+                          {String(g.start + 1).padStart(2, "0")}
                         </span>
-                      </div>
-                      <PixelIcon
-                        type={leg?.mode === "flight" ? "ship" : place.icon}
-                        size={28}
-                      />
-                    </li>
-                  );
-                })}
+                        <LandmarkIcon id={place.id} size={42} />
+                        <div>
+                          <strong>
+                            {g.days > 1
+                              ? `Day ${g.days} in ${place.name}`
+                              : place.name}
+                          </strong>
+                          <span className="small muted">
+                            Voted {epochDate(g.stop.epoch)}
+                            {g.days > 1 ? ` – ${epochDate(g.through)}` : ""}
+                          </span>
+                          <span className="small">
+                            {leg?.mode === "flight" ? (
+                              <>
+                                <PixelIcon type="plane" size={20} /> Air
+                                crossing
+                              </>
+                            ) : (
+                              "By road"
+                            )}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
               </ol>
             )}
-            <div className="finalize-panel">
-              <h3>Close a voting day</h3>
-              <p className="small muted">
+            <div className={`finalize-panel ${canFinalize ? "ready" : ""}`}>
+              <h3>
+                {canFinalize ? "A day is ready to close" : "Close a voting day"}
+              </h3>
+              <p className="small">
                 {canFinalize
-                  ? `${epochDate(data!.pending[1])} is ready. Anyone can add its winner to the route.`
-                  : "Ended days with votes are finalized oldest first. Empty days are skipped."}
+                  ? `${epochDate(data!.pending[1])} has ended. Close it to add the winning stop to Squeek’s route. Anyone can help.`
+                  : "Ended days with votes close oldest first. Days with no votes are skipped, so Squeek can rest without blocking the trip."}
               </p>
               <button
-                disabled={!canFinalize || wrong || !address || stale || anyBusy}
-                onClick={() => void prepare("finalize")}
+                disabled={
+                  !canFinalize ||
+                  stale ||
+                  anyBusy ||
+                  (isConnected && wrong) ||
+                  data?.balance === 0n ||
+                  accountStatus === "reconnecting"
+                }
+                onClick={() => {
+                  if (!isConnected)
+                    window.dispatchEvent(new Event("hrt-connect"));
+                  else void prepare("finalize");
+                }}
               >
-                {finalizeTx.stage === "checking"
-                  ? "Checking day…"
+                {!isConnected && canFinalize
+                  ? "Connect to close this day"
                   : finalizeTx.stage === "signing"
-                    ? "Confirm in wallet…"
+                    ? "Waiting for wallet…"
                     : finalizeTx.stage === "confirming"
-                      ? "Confirming day…"
+                      ? "Finalization pending…"
                       : `Finalize ${canFinalize ? epochDate(data!.pending[1]) : "next day"}`}
               </button>
-              {!address && canFinalize && (
-                <p className="small muted">
-                  Connect a wallet above to finalize.
-                </p>
-              )}
               <TxStatus kind="finalize" tx={finalizeTx} />
             </div>
           </section>
@@ -743,46 +997,93 @@ export function App({ runtime }: { runtime: Runtime }) {
               <h2 id="leaderboard-title">Navigators</h2>
               <Icon name="compass" />
             </div>
-            <p className="muted small">
-              One point for each vote that matched a finalized winner.
+            <p className="small muted">
+              One point for each vote matching a finalized winner.
             </p>
-            {navigators.isError ? (
+            {navigators.isError || snapshot.isError ? (
               <div className="empty">
-                <p>Event history unavailable. Rankings are unknown.</p>
+                <p>Can’t reach the network, retrying. Rankings are unknown.</p>
                 <button onClick={() => void navigators.refetch()}>
                   Retry leaderboard
                 </button>
               </div>
-            ) : navigators.isFetching && !navigators.data ? (
+            ) : !navigators.data ? (
               <p className="empty">Reading confirmed voting events…</p>
-            ) : navigators.data?.navigators.length ? (
+            ) : navigators.data.navigators.length ? (
               <ol className="leaderboard-list">
-                {navigators.data.navigators.map((n, i) => (
-                  <li key={n.address}>
-                    <span className="stop-number">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <Address address={n.address} runtime={runtime} compact />
-                    <span>
-                      {n.wins} {n.wins === 1 ? "point" : "points"}
-                    </span>
-                  </li>
-                ))}
+                {navigators.data.navigators.map((n, i) => {
+                  const identity = navigatorIdentity(n.address);
+                  return (
+                    <li
+                      key={n.address}
+                      className={
+                        address?.toLowerCase() === n.address.toLowerCase()
+                          ? "you"
+                          : ""
+                      }
+                    >
+                      <span className="stop-number">{i + 1}</span>
+                      <svg
+                        className="avatar"
+                        width="40"
+                        height="40"
+                        viewBox="0 0 5 5"
+                        aria-hidden="true"
+                      >
+                        <rect width="5" height="5" fill="#e6ddfa" />
+                        {Array.from({ length: 15 }, (_, j) => {
+                          const x = j % 3,
+                            y = Math.floor(j / 3);
+                          return parseInt(identity.seed[j], 16) % 2 ? (
+                            <g key={j} fill="#624b93">
+                              <rect x={x} y={y} width="1" height="1" />
+                              <rect x={4 - x} y={y} width="1" height="1" />
+                            </g>
+                          ) : null;
+                        })}
+                      </svg>
+                      <div className="navigator-name">
+                        <strong>
+                          {identity.name}
+                          {address?.toLowerCase() === n.address.toLowerCase()
+                            ? " · You"
+                            : ""}
+                        </strong>
+                        <span className="small muted">
+                          {n.wins >= 10
+                            ? "Trail captain"
+                            : n.wins >= 3
+                              ? "Pathfinder"
+                              : "Seed scout"}{" "}
+                          · {n.streak}-day best streak
+                        </span>
+                        <Address
+                          address={n.address}
+                          runtime={runtime}
+                          compact
+                        />
+                      </div>
+                      <strong className="small">
+                        {count(n.wins, "point")}
+                      </strong>
+                    </li>
+                  );
+                })}
               </ol>
             ) : (
               <div className="empty">
-                <PixelIcon type="rocket" />
+                <PixelIcon type="compass" />
                 <p>
-                  No winning votes recorded yet.
-                  <br />
-                  Your next choice could put you on the board.
+                  No winning votes recorded yet. Your next choice could put you
+                  on the board.
                 </p>
               </div>
             )}
             {navigators.data && (
               <p className="small muted">
-                Confirmed events through block {String(navigators.data.through)}
-                . The latest 12 blocks wait for confirmation.
+                Confirmed through block {String(navigators.data.through)}. The
+                latest 12 blocks wait for confirmation. Names and avatars are
+                generated from addresses.
               </p>
             )}
           </section>
@@ -797,47 +1098,109 @@ export function App({ runtime }: { runtime: Runtime }) {
               <h2 id="trip-log-title">Postcards from the wheel</h2>
               <p className="muted">A little memory from every arrival.</p>
             </div>
-            <span className="muted small">Trip log</span>
+            <a href="#passport">Open passport ↓</a>
           </div>
-          {!hasDistance && !!data?.route.length ? (
+          {!data ? (
+            <p className="empty">
+              {snapshot.isError
+                ? "Trip history unavailable until Sepolia responds."
+                : "Loading trip history…"}
+            </p>
+          ) : !arrivalKnown && data.route.length > 0 ? (
             <p className="empty">
               Arrival history is waiting for settled distance.
             </p>
-          ) : state.completed === 0 ? (
+          ) : completed === 0 ? (
             <div className="first-postcard">
-              <PixelIcon type="palm" size={56} />
+              <Hamster />
               <div>
                 <h3>Greetings from Miami Beach</h3>
-                <p className="muted">
-                  A pocketful of seeds. An open road. The first postcard is
-                  waiting to happen.
+                <p>
+                  The starting line. The first arrival postcard is waiting to
+                  happen.
                 </p>
               </div>
-              <span className="small muted">Starting point</span>
+              <a href="#vote">Choose the next stop ↑</a>
             </div>
           ) : (
             <div className="postcard-grid">
-              {data?.route.slice(0, state.completed).map((stop, i) => {
-                const place = DESTINATIONS[Number(stop.destinationId)];
-                return (
-                  <article className="postcard" key={String(stop.epoch)}>
-                    <div className="postcard-art">
-                      <PixelIcon type={place.icon} size={56} />
-                      <span className="small">
-                        Stop {String(i + 1).padStart(2, "0")}
-                      </span>
+              {groups
+                .filter((g) => g.start < completed)
+                .map((g) => {
+                  const place = DESTINATIONS[Number(g.stop.destinationId)];
+                  return (
+                    <div key={String(g.stop.epoch)}>
+                      {g.days > 1 && (
+                        <p className="stay-label">
+                          Day {Math.min(g.days, completed - g.start)} in{" "}
+                          {place.name} · consecutive winning days
+                        </p>
+                      )}
+                      <Postcard
+                        place={place}
+                        km={journey.data?.[g.start]?.km}
+                        arrival={getObservedArrival(g.stop.epoch)}
+                        final={finalFor(g.stop.epoch)}
+                        explorer={runtime.deployment.network.explorer}
+                      />
                     </div>
-                    <h3>{place.name}</h3>
-                    <p>{place.fact}</p>
-                    <span className="small muted">
-                      Chosen {epochDate(stop.epoch)} · reached on settled
-                      distance
-                    </span>
-                  </article>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
+          <p className="small muted arrival-note">
+            Arrival dates are when this browser first observed settled distance
+            reaching a stop, not a historical timestamp from the contract.
+            Winning votes and transaction links use confirmed events.
+          </p>
+        </section>
+        <section id="passport" aria-labelledby="passport-title">
+          <div className="section-head">
+            <div>
+              <h2 id="passport-title">Squeek’s little passport</h2>
+              <p className="muted">
+                {arrivalKnown
+                  ? `${visited.size} of 64 places visited.`
+                  : "Arrival status loading."}{" "}
+                Select a postcard to take a closer look.
+              </p>
+            </div>
+            <span className="passport-stamp" aria-hidden="true">
+              64 places
+              <br />
+              one small wheel
+            </span>
+          </div>
+          <div className="passport-grid">
+            {DESTINATIONS.map((place) => (
+              <button
+                className="passport-card"
+                key={place.id}
+                onClick={() => setPassportPlace(place.id)}
+                aria-label={`${place.name}: ${visited.has(place.id) ? "visited postcard" : arrivalKnown ? "locked postcard" : "arrival status unknown"}`}
+              >
+                <PostcardPicture
+                  place={place}
+                  locked={!visited.has(place.id)}
+                />
+                <span className="passport-place">
+                  <strong>{place.name}</strong>
+                  <span className="small muted">
+                    {LANDMARKS[place.id].name}
+                  </span>
+                  <span className="small">
+                    {visited.has(place.id)
+                      ? "Visited ✓"
+                      : arrivalKnown
+                        ? "Not visited yet"
+                        : snapshot.isError || wheel.isError || journey.isError
+                          ? "Arrivals unavailable"
+                          : "Checking arrivals…"}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
         </section>
         <details className="observability">
           <summary>Trip data & contract</summary>
@@ -847,55 +1210,48 @@ export function App({ runtime }: { runtime: Runtime }) {
               <Address address={runtime.contract.address} runtime={runtime} />
               <p className="small muted">
                 {data
-                  ? `Contract code verified · block ${data.block} · refreshed ${new Date(data.readAt).toLocaleTimeString("en-GB", { timeZone: "UTC" })} UTC`
-                  : "Contract verification pending. All transactions are disabled."}
+                  ? `Contract code verified · block ${data.block} · refreshed ${new Date(data.readAt).toLocaleTimeString()}`
+                  : "Contract verification pending. Transactions are disabled."}
               </p>
               <p className="small muted">
                 Source: {runtime.deployment.sourceCommit}
               </p>
               <a href="./imd-deployment.json" target="_blank" rel="noreferrer">
-                Deployment manifest & asset hashes
+                Deployment manifest & asset hashes ↗
               </a>
             </div>
             <div>
               <h3>Only settled work moves the trip</h3>
               <p className="small muted">
                 {wheel.data
-                  ? `${wheel.data.settledWork.toLocaleString()} settled passages · ${wheel.data.acceptedWork.toLocaleString()} passages behind the observed distance · safe block ${wheel.data.safeBlock}`
+                  ? `${wheel.data.settledWork.toLocaleString()} settled passages · safe block ${wheel.data.safeBlock}`
                   : "Waiting for wheel snapshots."}
               </p>
               <p className="small muted">
-                Wheel distance is an API estimate. A complete observed-distance
-                snapshot must be covered by settled work before it moves the
-                marker. Unused distance waits for a queued stop. Road routes are
-                cached on this browser.
-              </p>
-              <p className="small muted">
-                Routes:{" "}
-                {journey.data?.some((l) => l.source === "OSRM")
-                  ? "OSRM road service and great-circle crossings"
-                  : "Great-circle crossings when no road connects stops"}
-                {journey.data?.some((l) => l.reason?.includes("unavailable"))
-                  ? " · Some routes are estimated because the road service is unavailable."
-                  : ""}
-                .
+                Wheel distance is an API estimate, used only when settled work
+                covers its snapshot. Unused distance waits for a queued stop.
+                Roads use OSRM; disconnected roads use great-circle air
+                crossings. Unavailable road routing pauses arrival progress.
+                Routes are cached in this browser.
               </p>
               <a href={GAME.api.docs} target="_blank" rel="noreferrer">
-                Squeekchain data documentation <Icon name="external" />
+                Squeekchain data documentation ↗
               </a>
-              <p className="small muted">
-                USD gas context is unavailable. Fees are shown in Sepolia test
-                ETH.
-              </p>
             </div>
           </div>
         </details>
       </main>
       <footer>
-        <a className="footer-brand" href="#main">
-          Squeek’s First Road Trip
-        </a>
-        <span>Powered by real wheel work. Steered by the community.</span>
+        <div>
+          <a className="footer-brand" href="#main">
+            Squeek’s First Road Trip
+          </a>
+          <p className="small">Testnet: no real money.</p>
+        </div>
+        <div>
+          <span className="small">Voting contract · Sepolia</span>
+          <Address address={runtime.contract.address} runtime={runtime} />
+        </div>
         <button onClick={() => setHelp(true)}>
           How to play <Icon name="compass" />
         </button>
@@ -906,23 +1262,32 @@ export function App({ runtime }: { runtime: Runtime }) {
         title="How the trip works"
       >
         <ol className="help-list">
-          <li>Choose from 64 places. Each wallet gets one vote per UTC day.</li>
+          <li>
+            Watch without a wallet. Choose from 64 places; each wallet gets one
+            vote per UTC day. Votes cannot be changed.
+          </li>
           <li>
             After 00:00 UTC, anyone can finalize the oldest day with votes. Most
-            votes wins; ties go to the lowest destination id.
+            votes wins; ties go to the lowest destination id. Empty days are
+            skipped.
           </li>
           <li>
-            The wheel’s settled distance moves Squeek along the winning
-            stops, at ×{GAME.scale}. Roads come from OSRM; oceans use
-            great-circle air crossings.
+            Settled wheel distance moves Squeek along the winning stops at ×
+            {GAME.scale}. Roads come from OSRM; air crossings use great-circle
+            estimates.
           </li>
           <li>
-            Squeek rests when there is no next stop or the wheel is idle.
-            Each reached stop adds a postcard.
+            Squeek rests when the wheel is idle or there is no next stop.
+            Consecutive wins in the same city appear as a longer stay.
           </li>
           <li>
-            Matching a finalized winner earns a Navigator point. This is a
-            Sepolia game; voting and finalization use test ETH only for gas.
+            Every arrival unlocks a postcard. Match a finalized winner to earn a
+            Navigator point. Streaks count consecutive UTC days with winning
+            votes.
+          </li>
+          <li>
+            This is Sepolia testnet. You pay only network gas in test ETH. No
+            ETH goes to the voting contract.
           </li>
         </ol>
         <a
@@ -930,8 +1295,51 @@ export function App({ runtime }: { runtime: Runtime }) {
           target="_blank"
           rel="noreferrer"
         >
-          Get Sepolia test ETH
+          Get Sepolia test ETH ↗
         </a>
+      </Modal>
+      <Modal
+        open={passportPlace !== null}
+        onClose={() => setPassportPlace(null)}
+        title={
+          passportPlace !== null ? DESTINATIONS[passportPlace].name : "Postcard"
+        }
+      >
+        {passportPlace !== null &&
+          (() => {
+            const place = DESTINATIONS[passportPlace],
+              i =
+                data?.route.findIndex(
+                  (s, j) =>
+                    j < completed && Number(s.destinationId) === passportPlace,
+                ) ?? -1;
+            return i >= 0 ? (
+              <Postcard
+                place={place}
+                km={journey.data?.[i]?.km}
+                arrival={getObservedArrival(data!.route[i].epoch)}
+                final={finalFor(data!.route[i].epoch)}
+                explorer={runtime.deployment.network.explorer}
+              />
+            ) : (
+              <>
+                <PostcardPicture place={place} locked />
+                <p>
+                  {arrivalKnown
+                    ? "This postcard unlocks when Squeek arrives."
+                    : "Arrival status is waiting for verified trip data."}
+                </p>
+                <button
+                  onClick={() => {
+                    setPassportPlace(null);
+                    selectPlace(place.id);
+                  }}
+                >
+                  Choose {place.name}
+                </button>
+              </>
+            );
+          })()}
       </Modal>
       <Modal
         open={review !== null}
@@ -950,7 +1358,7 @@ export function App({ runtime }: { runtime: Runtime }) {
             <dl className="review-list">
               <div>
                 <dt>Network</dt>
-                <dd>{runtime.chain.name} testnet</dd>
+                <dd>Sepolia testnet</dd>
               </div>
               <div>
                 <dt>Sent to contract</dt>
@@ -970,9 +1378,9 @@ export function App({ runtime }: { runtime: Runtime }) {
               </div>
             </dl>
             <p className="small muted">
-              The wallet shows the final gas fee. USD context is unavailable.
+              The wallet shows the final gas fee. USD context is unavailable.{" "}
               {review.kind === "vote"
-                ? " A vote mined after 00:00 UTC belongs to the next day."
+                ? "A vote mined after 00:00 UTC belongs to the next day."
                 : ""}
             </p>
             <Address address={runtime.contract.address} runtime={runtime} />

@@ -1,0 +1,155 @@
+{
+  "url": "production export at /preview/",
+  "results": [
+    {
+      "name": "390px spectator first screen, ballot, filters, navigation and help",
+      "passed": true,
+      "ms": 2165
+    },
+    {
+      "name": "map pin selection uses the existing MapLibre ballot mapping",
+      "passed": true,
+      "ms": 999
+    },
+    {
+      "name": "EIP-6963 connection then reload restores a real connector without blank page",
+      "passed": true,
+      "ms": 2243
+    },
+    {
+      "name": "legacy wagmi.store stub is ignored without deleting unrelated storage",
+      "passed": true,
+      "ms": 855
+    },
+    {
+      "name": "current-version saved stub with no wallet cannot crash spectator reads",
+      "passed": true,
+      "ms": 817
+    },
+    {
+      "name": "private browser with disabled storage and no wallet can read the trip",
+      "passed": true,
+      "ms": 730
+    },
+    {
+      "name": "fallback fonts keep the mobile action visible",
+      "passed": true,
+      "ms": 922
+    },
+    {
+      "name": "two extensions are named separately with no duplicate generic injected entry",
+      "passed": true,
+      "ms": 964
+    },
+    {
+      "name": "locked wallet gives an unlock instruction while the public trip stays visible",
+      "passed": true,
+      "ms": 1095
+    },
+    {
+      "name": "wrong chain adds Sepolia then switches once before enabling voting",
+      "passed": true,
+      "ms": 1075
+    },
+    {
+      "name": "declined chain switch recovers with one-tap Sepolia action",
+      "passed": true,
+      "ms": 1277
+    },
+    {
+      "name": "360px phone offers four wallet-browser deep links and Smart Wallet",
+      "passed": true,
+      "ms": 1033
+    },
+    {
+      "name": "360px in-wallet browser connects directly",
+      "passed": true,
+      "ms": 1031
+    },
+    {
+      "name": "no test ETH exposes a faucet and prevents a transaction",
+      "passed": true,
+      "ms": 1069
+    },
+    {
+      "name": "simulated vote review, waiting, pending, confirmation and duplicate-vote lock",
+      "passed": true,
+      "ms": 2567
+    },
+    {
+      "name": "permissionless finalization preserves the oldest pending epoch",
+      "passed": true,
+      "ms": 1259
+    },
+    {
+      "name": "transaction rejection reports the reason and permits retry",
+      "passed": true,
+      "ms": 1166
+    },
+    {
+      "name": "reverted receipt reports failure",
+      "passed": true,
+      "ms": 1222
+    },
+    {
+      "name": "contract simulation rejection explains the failure before signing",
+      "passed": true,
+      "ms": 1148
+    },
+    {
+      "name": "failed primary RPC falls back to another public endpoint",
+      "passed": true,
+      "ms": 979
+    },
+    {
+      "name": "all public RPCs failing display unknown votes and retry without a wallet",
+      "passed": true,
+      "ms": 4862
+    },
+    {
+      "name": "empty day, resting several days and all-64-complete states",
+      "passed": true,
+      "ms": 3162
+    },
+    {
+      "name": "consecutive winning days become a single longer stay",
+      "passed": true,
+      "ms": 840
+    },
+    {
+      "name": "landmark postcard, confirmed winning votes, finalization link, PNG and share text",
+      "passed": true,
+      "ms": 1962
+    },
+    {
+      "name": "returning visitors get a recap from the versioned last-seen block",
+      "passed": true,
+      "ms": 1930
+    },
+    {
+      "name": "render error boundary resets only app keys and reloads the usable trip",
+      "passed": true,
+      "ms": 1012
+    },
+    {
+      "name": "ABI mismatch fails closed with a recovery screen",
+      "passed": true,
+      "ms": 242
+    },
+    {
+      "name": "320, 360, 390, 800, 1440 widths: no overflow, long values and visible first action",
+      "passed": true,
+      "ms": 4688
+    },
+    {
+      "name": "keyboard focus, accessibility, reduced motion and 200% text enlargement",
+      "passed": true,
+      "ms": 3183
+    },
+    {
+      "name": "WebKit runtime",
+      "passed": null,
+      "limitation": "WebKit executable unavailable in the supplied runtime; no WebKit behavior verified."
+    }
+  ]
+}

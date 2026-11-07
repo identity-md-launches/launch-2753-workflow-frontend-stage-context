@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { getAccount, getWalletClient } from "@wagmi/core";
 import { getAddress, type EIP1193Provider } from "viem";
 import { switchNetwork, type Runtime } from "./config";
 import { friendlyError } from "./chain";
@@ -87,8 +88,30 @@ function WalletMark() {
     </svg>
   );
 }
-export function Wallet({ runtime }: { runtime: Runtime }) {
-  const { address, chainId, connector, isConnected } = useAccount();
+export function Wallet({
+  runtime,
+  action = "Connect",
+}: {
+  runtime: Runtime;
+  action?: string;
+}) {
+  const { address, chainId, status } = useAccount();
+  const isConnected = status === "connected";
+  async function switchConnectedNetwork() {
+    const current = getAccount(runtime.walletConfig);
+    if (
+      current.status !== "connected" ||
+      typeof current.connector?.getProvider !== "function"
+    )
+      throw new Error(
+        "Wallet is still reconnecting. Try again when it is ready.",
+      );
+    const client = await getWalletClient(runtime.walletConfig);
+    await switchNetwork(
+      { request: client.transport.request } as EIP1193Provider,
+      runtime.deployment,
+    );
+  }
   const { connectors, connectAsync, isPending, variables } = useConnect();
   const { disconnect } = useDisconnect();
   const [open, setOpen] = useState(false),
@@ -107,26 +130,19 @@ export function Wallet({ runtime }: { runtime: Runtime }) {
   );
   const wrong = isConnected && chainId !== runtime.deployment.chainId;
   useEffect(() => {
-    let cancelled = false;
-    runtime.setReadProvider(undefined);
-    if (isConnected && !wrong && connector)
-      void connector.getProvider().then((provider) => {
-        if (!cancelled) runtime.setReadProvider(provider as EIP1193Provider);
-      });
-    return () => {
-      cancelled = true;
-      runtime.setReadProvider(undefined);
+    const show = () => {
+      setError("");
+      setOpen(true);
     };
-  }, [isConnected, wrong, connector, runtime]);
+    window.addEventListener("hrt-connect", show);
+    return () => window.removeEventListener("hrt-connect", show);
+  }, []);
   async function switchChain() {
-    if (!connector) return;
+    if (status !== "connected") return;
     setError("");
     setSwitching(true);
     try {
-      await switchNetwork(
-        (await connector.getProvider()) as EIP1193Provider,
-        runtime.deployment,
-      );
+      await switchConnectedNetwork();
       setOpen(false);
     } catch (e) {
       setError(friendlyError(e));
@@ -137,6 +153,11 @@ export function Wallet({ runtime }: { runtime: Runtime }) {
   return (
     <>
       <button
+        aria-label={
+          !isConnected && status !== "reconnecting"
+            ? "Connect wallet"
+            : undefined
+        }
         className={`wallet-button ${wrong ? "wrong" : ""}`}
         onClick={() => {
           if (wrong) {
@@ -146,16 +167,18 @@ export function Wallet({ runtime }: { runtime: Runtime }) {
             setError("");
           }
         }}
-        disabled={switching}
+        disabled={switching || status === "reconnecting"}
         aria-haspopup="dialog"
       >
-        {switching
-          ? "Switching…"
-          : wrong
-            ? `Switch to ${runtime.chain.name}`
-            : address
-              ? shortAddress(address)
-              : "Connect wallet"}
+        {status === "reconnecting"
+          ? "Restoring wallet…"
+          : switching
+            ? "Switching…"
+            : wrong
+              ? `Switch to ${runtime.chain.name}`
+              : isConnected && address
+                ? shortAddress(address)
+                : action}
         {!wrong && (
           <span
             className="connection-dot"
@@ -222,10 +245,7 @@ export function Wallet({ runtime }: { runtime: Runtime }) {
                   try {
                     const result = await connectAsync({ connector: c });
                     if (result.chainId !== runtime.deployment.chainId) {
-                      await switchNetwork(
-                        (await c.getProvider()) as EIP1193Provider,
-                        runtime.deployment,
-                      );
+                      await switchConnectedNetwork();
                     }
                     setOpen(false);
                   } catch (e) {
@@ -237,7 +257,7 @@ export function Wallet({ runtime }: { runtime: Runtime }) {
                   }
                 }}
               >
-                {c.icon ? (
+                {c.icon?.startsWith("data:image/svg+xml") ? (
                   <img src={c.icon} width="28" height="28" alt="" />
                 ) : (
                   <WalletMark />
@@ -257,9 +277,11 @@ export function Wallet({ runtime }: { runtime: Runtime }) {
             </p>
           </>
         )}
-        <p role="alert" className="error">
-          {error}
-        </p>
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
       </Modal>
     </>
   );

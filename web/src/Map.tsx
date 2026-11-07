@@ -6,7 +6,7 @@ import maplibregl, {
 import "maplibre-gl/dist/maplibre-gl.css";
 import { GAME } from "./config";
 import { DESTINATIONS } from "./destinations";
-import { hamsterSVG, crossingSVG, Icon } from "./art";
+import { hamsterSVG, crossingSVG, Icon, PixelIcon } from "./art";
 import { pointAlong, type Leg, type Point } from "./journey";
 
 // Vector tiles only: no remote images, sprite sheets, fonts or copyrighted character art.
@@ -24,35 +24,35 @@ const style: StyleSpecification = {
     {
       id: "background",
       type: "background",
-      paint: { "background-color": "#223933" },
+      paint: { "background-color": "#e5d9b4" },
     },
     {
       id: "landcover",
       type: "fill",
       source: "world",
       "source-layer": "landcover",
-      paint: { "fill-color": "#172a2a", "fill-opacity": 0.85 },
+      paint: { "fill-color": "#d8d4ac", "fill-opacity": 0.85 },
     },
     {
       id: "landuse",
       type: "fill",
       source: "world",
       "source-layer": "landuse",
-      paint: { "fill-color": "#213232", "fill-opacity": 0.7 },
+      paint: { "fill-color": "#eee0bb", "fill-opacity": 0.7 },
     },
     {
       id: "water",
       type: "fill",
       source: "world",
       "source-layer": "water",
-      paint: { "fill-color": "#0e1924" },
+      paint: { "fill-color": "#b6ddd5" },
     },
     {
       id: "parks",
       type: "fill",
       source: "world",
       "source-layer": "park",
-      paint: { "fill-color": "#20362f", "fill-opacity": 0.65 },
+      paint: { "fill-color": "#bbc99f", "fill-opacity": 0.65 },
     },
     {
       id: "boundaries",
@@ -60,7 +60,7 @@ const style: StyleSpecification = {
       source: "world",
       "source-layer": "boundary",
       paint: {
-        "line-color": "#486365",
+        "line-color": "#928ba1",
         "line-width": 0.7,
         "line-dasharray": [3, 3],
       },
@@ -71,7 +71,7 @@ const style: StyleSpecification = {
       source: "world",
       "source-layer": "transportation",
       paint: {
-        "line-color": "#3b5756",
+        "line-color": "#b9a789",
         "line-opacity": 0.6,
         "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.3, 10, 1.3],
       },
@@ -124,7 +124,10 @@ export function TripMap({
       );
       m.on("error", () => setError(true));
       m.on("sourcedata", (e) => {
-        if (e.sourceId === "world" && e.isSourceLoaded) setTilesReady(true);
+        if (e.sourceId === "world" && e.isSourceLoaded) {
+          setTilesReady(true);
+          setError(false);
+        }
       });
       m.on("load", () => {
         const features = DESTINATIONS.map((d) => ({
@@ -142,8 +145,8 @@ export function TripMap({
           source: "destinations",
           paint: {
             "circle-radius": 4,
-            "circle-color": "#8b83b9",
-            "circle-stroke-color": "#0b1013",
+            "circle-color": "#80619e",
+            "circle-stroke-color": "#fff8e7",
             "circle-stroke-width": 2,
           },
         });
@@ -157,8 +160,8 @@ export function TripMap({
           source: "selection",
           paint: {
             "circle-radius": 8,
-            "circle-color": "#a58bfd",
-            "circle-stroke-color": "#e4dcff",
+            "circle-color": "#69508f",
+            "circle-stroke-color": "#ffffff",
             "circle-stroke-width": 2,
           },
         });
@@ -171,7 +174,7 @@ export function TripMap({
           type: "line",
           source: "route",
           paint: {
-            "line-color": "#77ead7",
+            "line-color": "#765092",
             "line-width": 2.5,
             "line-dasharray": [1, 2.4],
           },
@@ -317,7 +320,10 @@ export function TripMap({
           </div>
         )}
         {legs.filter((l) => l.mode === "flight").length > 0 && (
-          <div className="flight-key">Air crossing · great-circle route</div>
+          <div className="flight-key">
+            <PixelIcon type="plane" size={20} /> Air crossing · great-circle
+            route
+          </div>
         )}
         <div className="map-origin">
           <span className="map-cross">+</span>

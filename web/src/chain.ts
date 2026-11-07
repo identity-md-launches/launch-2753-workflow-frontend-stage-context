@@ -1,4 +1,5 @@
 import { decodeEventLog, getAddress, type Address, type Hash } from "viem";
+import handoff from "../deployment/handoff.json";
 import type { Runtime } from "./config";
 export type RouteStop = { epoch: bigint; destinationId: bigint };
 export type Snapshot = {
@@ -16,10 +17,7 @@ export type Snapshot = {
   balance?: bigint;
   readAt: number;
 };
-export async function readSnapshot(
-  runtime: Runtime,
-  account?: Address,
-): Promise<Snapshot> {
+export async function readSnapshot(runtime: Runtime): Promise<Snapshot> {
   const { client, contract, abi, deployment } = runtime;
   if ((await client.getChainId()) !== deployment.chainId)
     throw new Error("RPC returned another network. Voting is disabled.");
@@ -49,21 +47,16 @@ export async function readSnapshot(
     throw new Error(
       "Contract settings differ from the approved game. Voting is disabled.",
     );
-  const [end, total, leader, pending, route, ballot, balance, ...votes] =
-    await Promise.all([
-      read("epochEnd", [epoch]),
-      read("totalVotes", [epoch]),
-      read("leaderOf", [epoch]),
-      read("pendingEpoch"),
-      read("route"),
-      account ? read("voteOf", [epoch, account]) : undefined,
-      account
-        ? client.getBalance({ address: account, blockNumber: block.number })
-        : undefined,
-      ...Array.from({ length: 64 }, (_, id) =>
-        read("votesFor", [epoch, BigInt(id)]),
-      ),
-    ]);
+  const [end, total, leader, pending, route, ...votes] = await Promise.all([
+    read("epochEnd", [epoch]),
+    read("totalVotes", [epoch]),
+    read("leaderOf", [epoch]),
+    read("pendingEpoch"),
+    read("route"),
+    ...Array.from({ length: 64 }, (_, id) =>
+      read("votesFor", [epoch, BigInt(id)]),
+    ),
+  ]);
   return {
     epoch,
     epochSeconds,
@@ -75,60 +68,103 @@ export async function readSnapshot(
     leader: leader as [bigint, bigint],
     pending: pending as [boolean, bigint],
     route: route as RouteStop[],
-    ballot: ballot as [boolean, bigint] | undefined,
-    balance: balance as bigint | undefined,
     readAt: Date.now(),
   };
 }
-export type Navigator = { address: Address; wins: number };
+export async function readBallot(
+  runtime: Runtime,
+  epoch: bigint,
+  account: Address,
+) {
+  const [ballot, balance] = await Promise.all([
+    runtime.client.readContract({
+      address: runtime.contract.address,
+      abi: runtime.abi,
+      functionName: "voteOf",
+      args: [epoch, account],
+    }),
+    runtime.client.getBalance({ address: account }),
+  ]);
+  return { ballot: ballot as readonly [boolean, bigint], balance };
+}
+export type Navigator = { address: Address; wins: number; streak: number };
+export type Finalization = {
+  epoch: bigint;
+  destinationId: bigint;
+  votes: bigint;
+  totalVotes: bigint;
+  hash: Hash;
+  block: bigint;
+};
+export type TripHistory = {
+  navigators: Navigator[];
+  finals: Finalization[];
+  through: bigint;
+  from: bigint;
+};
+export function rankNavigators(
+  route: RouteStop[],
+  votes: { epoch: bigint; voter: Address; destinationId: bigint }[],
+): Navigator[] {
+  const winners = new Map(route.map((s) => [String(s.epoch), s.destinationId]));
+  const wins = new Map<Address, Set<bigint>>();
+  for (const vote of votes) {
+    if (winners.get(String(vote.epoch)) !== vote.destinationId) continue;
+    const address = getAddress(vote.voter),
+      epochs = wins.get(address) ?? new Set<bigint>();
+    epochs.add(vote.epoch);
+    wins.set(address, epochs);
+  }
+  return [...wins]
+    .map(([address, epochs]) => {
+      let best = 0,
+        run = 0,
+        last = -2n;
+      for (const epoch of [...epochs].sort((a, b) => (a < b ? -1 : 1))) {
+        run = epoch === last + 1n ? run + 1 : 1;
+        best = Math.max(best, run);
+        last = epoch;
+      }
+      return { address, wins: epochs.size, streak: best };
+    })
+    .sort(
+      (a, b) =>
+        b.wins - a.wins ||
+        a.address.toLowerCase().localeCompare(b.address.toLowerCase()),
+    );
+}
+// In-memory incremental history never accepts user-editable localStorage as chain evidence.
+let historyCache:
+  | {
+      key: string;
+      through: bigint;
+      votes: { epoch: bigint; voter: Address; destinationId: bigint }[];
+      finals: Finalization[];
+    }
+  | undefined;
 export async function readNavigators(
   runtime: Runtime,
-  route: RouteStop[],
-): Promise<{ navigators: Navigator[]; through: bigint; from: bigint }> {
+  _route: RouteStop[],
+): Promise<TripHistory> {
   const { client, contract, abi, deployment } = runtime;
-  const tip = await client.getBlockNumber();
+  const tip = await client.getBlockNumber({ cacheTime: 0 });
   const through = tip > 12n ? tip - 12n : 0n;
-  if (!route.length) return { navigators: [], through, from: through };
-  const safeRoute = (await client.readContract({
-    address: contract.address,
-    abi,
-    functionName: "route",
-    blockNumber: through,
-  })) as RouteStop[];
-  if (!safeRoute.length) return { navigators: [], through, from: through };
-  // Find the creation block from code, rather than maintaining another deployment map.
-  let lo = 0n,
-    hi = through;
-  const key = `hrt-deploy-${deployment.chainId}-${contract.address}`;
-  try {
-    const saved = localStorage.getItem(key);
-    if (saved && /^\d+$/.test(saved) && BigInt(saved) <= through)
-      lo = hi = BigInt(saved);
-  } catch {
-    /* storage may be blocked */
-  }
-  while (lo < hi) {
-    const mid = (lo + hi) / 2n;
-    const code = await client.getCode({
-      address: contract.address,
-      blockNumber: mid,
-    });
-    if (code && code !== "0x") hi = mid;
-    else lo = mid + 1n;
-  }
-  try {
-    localStorage.setItem(key, lo.toString());
-  } catch {
-    /* optional cache */
-  }
-  const winners = new Map(
-    safeRoute.map((stop) => [
-      stop.epoch.toString(),
-      Number(stop.destinationId),
-    ]),
+  const record = handoff.contracts.find(
+    (c) =>
+      c.name === contract.name &&
+      c.address.toLowerCase() === contract.address.toLowerCase(),
   );
-  const wins = new Map<Address, Set<string>>();
-  let cursor = lo,
+  if (!record || deployment.chainId !== handoff.chainId)
+    throw new Error("History deployment does not match.");
+  const from = BigInt(record.blockNumber),
+    key = `${deployment.chainId}:${contract.address}`;
+  const cache =
+    historyCache?.key === key && historyCache.through <= through
+      ? historyCache
+      : undefined;
+  const votes = cache ? [...cache.votes] : [],
+    finals = cache ? [...cache.finals] : [];
+  let cursor = cache ? cache.through + 1n : from,
     range = 5000n;
   while (cursor <= through) {
     const end = cursor + range - 1n > through ? through : cursor + range - 1n;
@@ -136,40 +172,50 @@ export async function readNavigators(
       const logs = await client.getContractEvents({
         address: contract.address,
         abi,
-        eventName: "Voted",
         fromBlock: cursor,
         toBlock: end,
         strict: true,
       });
       for (const log of logs) {
-        const args = log.args as unknown as {
-          epoch: bigint;
-          voter: Address;
-          destinationId: bigint;
-        };
-        if (winners.get(args.epoch.toString()) === Number(args.destinationId)) {
-          const address = getAddress(args.voter);
-          const epochs = wins.get(address) ?? new Set<string>();
-          epochs.add(args.epoch.toString());
-          wins.set(address, epochs);
+        if (log.eventName === "Voted")
+          votes.push(
+            log.args as unknown as {
+              epoch: bigint;
+              voter: Address;
+              destinationId: bigint;
+            },
+          );
+        if (
+          log.eventName === "Finalized" &&
+          log.transactionHash &&
+          log.blockNumber !== null
+        ) {
+          const a = log.args as unknown as Omit<Finalization, "hash" | "block">;
+          finals.push({
+            ...a,
+            hash: log.transactionHash,
+            block: log.blockNumber,
+          });
         }
       }
       cursor = end + 1n;
     } catch (error) {
       if (range <= 100n) throw error;
-      range = range / 2n;
+      range /= 2n;
     }
   }
+  const safeRoute = (await client.readContract({
+    address: contract.address,
+    abi,
+    functionName: "route",
+    blockNumber: through,
+  })) as RouteStop[];
+  historyCache = { key, through, votes, finals };
   return {
-    navigators: [...wins]
-      .map(([address, epochs]) => ({ address, wins: epochs.size }))
-      .sort(
-        (a, b) =>
-          b.wins - a.wins ||
-          a.address.toLowerCase().localeCompare(b.address.toLowerCase()),
-      ),
+    navigators: rankNavigators(safeRoute, votes),
+    finals,
     through,
-    from: lo,
+    from,
   };
 }
 export function creditedEpoch(
@@ -229,6 +275,11 @@ export function friendlyError(error: unknown) {
     NotFinalized: "This day has not been finalized yet.",
     insufficient:
       "Your wallet needs Sepolia test ETH for gas. Use the faucet link.",
+    "Account or chain changed":
+      "Your wallet account or network changed. Review the action again.",
+    locked: "Unlock your wallet, then try connecting again.",
+    "already pending":
+      "A request is already waiting in your wallet. Open the wallet to continue.",
     rejected: "Request declined in your wallet. You can try again.",
     denied: "Request declined in your wallet. You can try again.",
   };

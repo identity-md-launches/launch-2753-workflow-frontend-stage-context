@@ -1,0 +1,84 @@
+{
+  "protectedAndContractFiles": [
+    {
+      "path": "src/RoadTripVotes.sol",
+      "unchanged": true,
+      "sha256": "60ce9421e4a2352b4c8c22f233dfea1c64f30062687508d2093f11eb06c21974"
+    },
+    {
+      "path": "docs/abi/RoadTripVotes.json",
+      "unchanged": true,
+      "sha256": "3efdf9463dd6cc0738dad2c716a37cd2725669807303291adcc84f81d2a63637"
+    },
+    {
+      "path": "dist/abi/RoadTripVotes.json",
+      "unchanged": true,
+      "sha256": "3efdf9463dd6cc0738dad2c716a37cd2725669807303291adcc84f81d2a63637"
+    },
+    {
+      "path": "web/src/destinations.ts",
+      "unchanged": true,
+      "sha256": "9ce73027e855259064a7e80faf4296b62e873076c685d643eaec58c3ee81d61e"
+    },
+    {
+      "path": "web/deployment/handoff.json",
+      "unchanged": true,
+      "sha256": "3b19d180317112ae2dd42ec4136b0f7dd5e0c24e307b26499a1d0b3346ff378a"
+    },
+    {
+      "path": "web/deployment/network.json",
+      "unchanged": true,
+      "sha256": "84edf16b00efca65114ea93af494a1c16f53e90238b655c3ff309dbecde95423"
+    },
+    {
+      "path": "foundry.toml",
+      "unchanged": true,
+      "sha256": "57555cd375e5a8b2e95b5e50244957894ab50d3a0c8c134b6374ec395eef91c6"
+    },
+    {
+      "path": "remappings.txt",
+      "unchanged": true,
+      "sha256": "ea084d6e5d1943cf7da06c5e6bcc80538762f5b35d368d942306c3a338222c6c"
+    },
+    {
+      "path": "web/package.json",
+      "unchanged": true,
+      "sha256": "2921ba88579a9ccd2860ffc775f6b2e041716886c149ea464080a65cddfb89b9"
+    },
+    {
+      "path": "web/package-lock.json",
+      "unchanged": true,
+      "sha256": "15c15196d7fcd452be50f2d0ee71897883e05472efd9e451bfbfea4dcd43f887"
+    },
+    {
+      "path": "web/vite.config.ts",
+      "unchanged": true,
+      "sha256": "776c58273cf2d895346aafdca4e307778a93dfbc138bbfabf16d8fcaa38c4c70"
+    },
+    {
+      "path": "web/tsconfig.json",
+      "unchanged": true,
+      "sha256": "f569fda01bc58fb1a85a0092aed822d705d0a07d39f703b0810d1ab11ecfc37e"
+    },
+    {
+      "path": ".gitignore",
+      "unchanged": true,
+      "sha256": "f2612430d6feb517ce8f24fec90f92cdef6a5c42c313903387090da776a3abfd"
+    },
+    {
+      "path": "web/.gitignore",
+      "unchanged": true,
+      "sha256": "5944d31b12061001a0a733655a98c61e35dbd7b47b8a07909178f2f81327d0bf"
+    }
+  ],
+  "immutableRuntimeManifestFieldsUnchanged": true,
+  "distIndexNotIgnored": true,
+  "submodules": 0,
+  "candidateBytesBeforeFinalNotes": 5938462,
+  "limitBytes": 8388608,
+  "exportBytes": 2947313,
+  "assetCount": 19,
+  "dependencyOrCacheFilesAdded": false,
+  "finalCandidateBytes": 5952322,
+  "finalCandidateFileCount": 146
+}

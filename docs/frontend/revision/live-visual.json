@@ -1,0 +1,26 @@
+{
+  "network": "Public service requests forwarded via Node in the isolated browser",
+  "results": [
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "fontsLoaded": true,
+      "voteBottom": 724.78125,
+      "status": "Squeek is restingResting on the wayNext: Chicago · 75% of this leg",
+      "ballot": "1 voteStockholm leads",
+      "wheel": "Settled wheel distance16.29 kmDistance multiplier×100 wheel kmAcross the map1,629 kmPassport collected0 / 64",
+      "mapMessage": null
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "fontsLoaded": true,
+      "voteBottom": 548.78125,
+      "status": "Squeek is restingResting on the wayNext: Chicago · 75% of this leg",
+      "ballot": "1 voteStockholm leads",
+      "wheel": "Settled wheel distance16.29 kmDistance multiplier×100 wheel kmAcross the map1,629 kmPassport collected0 / 64",
+      "mapMessage": null
+    }
+  ],
+  "errors": []
+}
